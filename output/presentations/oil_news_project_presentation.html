@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Semantic News to Oil Price Signals</title>
+  <style>
+    :root {
+      --ink: #10202e;
+      --muted: #5c6c7a;
+      --line: #d6dee6;
+      --blue: #1e5c8a;
+      --teal: #1f8a7b;
+      --gold: #c58a1a;
+      --red: #b65b4b;
+      --paper: #ffffff;
+      --bg: #f4f7fa;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      height: 100vh;
+    }
+    nav {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 20px 16px;
+      background: #0f1f2c;
+      color: white;
+      overflow: auto;
+    }
+    nav h1 {
+      margin: 0 0 18px;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+    nav a {
+      display: block;
+      color: #dce8f1;
+      text-decoration: none;
+      padding: 8px 10px;
+      border-left: 3px solid transparent;
+      font-size: 14px;
+      line-height: 1.25;
+      border-radius: 0 6px 6px 0;
+      transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
+    }
+    nav a:hover,
+    nav a.active { border-left-color: var(--gold); background: rgba(255,255,255,0.1); color: #fff; }
+    main {
+      position: relative;
+      height: 100vh;
+      overflow: hidden;
+      padding: 20px;
+    }
+    .toolbar {
+      position: absolute;
+      z-index: 10;
+      top: 10px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      font-size: 14px;
+      pointer-events: none;
+    }
+    button {
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--ink);
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+    .slide {
+      position: absolute;
+      inset: 44px 12px 12px;
+      background: var(--paper);
+      padding: clamp(30px, 5.6vh, 68px) clamp(36px, 5.4vw, 78px);
+      box-shadow: 0 14px 45px rgba(16,32,46,0.12);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(16px, 2.8vh, 30px);
+      page-break-after: always;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateX(28px) scale(0.985);
+      transition: opacity 260ms ease, transform 260ms ease;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateX(0) scale(1);
+    }
+    .cover {
+      display: grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 44px;
+      align-items: start;
+    }
+    h2 {
+      margin: 0;
+      font-size: clamp(36px, 6.5vh, 66px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+    .cover h2 { font-size: clamp(48px, 8.6vh, 86px); }
+    .subtitle {
+      margin: 0;
+      max-width: 900px;
+      color: var(--muted);
+      font-size: clamp(18px, 2.8vh, 27px);
+      line-height: 1.35;
+    }
+    .rule {
+      width: 170px;
+      height: 4px;
+      background: var(--teal);
+    }
+    .cover .rule { background: var(--gold); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
+    .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+    .grid2, .grid3, .grid4 { min-height: 0; }
+    .metric {
+      margin-bottom: clamp(10px, 2.8vh, 24px);
+    }
+    .metric strong {
+      display: block;
+      font-size: clamp(38px, 7vh, 58px);
+      line-height: 1;
+      color: var(--blue);
+    }
+    .metric span {
+      color: var(--muted);
+      font-size: clamp(14px, 2vh, 18px);
+    }
+    .teal strong { color: var(--teal); }
+    .gold strong { color: var(--gold); }
+    .red strong { color: var(--red); }
+    .step {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+    .badge {
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      background: var(--blue);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: clamp(19px, 3vh, 25px);
+    }
+    .step h3, .block h3 {
+      margin: 0 0 7px;
+      font-size: clamp(22px, 3.4vh, 30px);
+    }
+    .step p, .block p, li {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(17px, 2.7vh, 22px);
+      line-height: 1.35;
+    }
+    ul { margin: 0; padding-left: 22px; }
+    li { margin: 0 0 10px; color: var(--ink); }
+    .data-table, .metric-table {
+      display: grid;
+      gap: 10px;
+    }
+    .data-row, .metric-row {
+      display: grid;
+      grid-template-columns: 260px 130px 1fr;
+      gap: 16px;
+      padding-bottom: clamp(5px, 1.3vh, 10px);
+      border-bottom: 1px solid var(--line);
+      align-items: start;
+    }
+    .metric-row {
+      grid-template-columns: 140px 130px 1fr;
+    }
+    .data-row b, .metric-row b { font-size: clamp(17px, 2.5vh, 22px); }
+    .data-row strong, .metric-row strong { font-size: clamp(20px, 3vh, 27px); color: var(--blue); }
+    .data-row span, .metric-row span { color: var(--muted); font-size: clamp(16px, 2.4vh, 21px); line-height: 1.3; }
+    footer {
+      margin-top: auto;
+      color: var(--muted);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .deck-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #slide-status {
+      min-width: 74px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    [contenteditable="true"]:focus {
+      outline: 2px solid rgba(31,138,123,0.45);
+      outline-offset: 3px;
+      border-radius: 3px;
+    }
+    .slide [contenteditable="true"] {
+      cursor: text;
+    }
+    @page {
+      size: landscape;
+      margin: 0;
+    }
+    @media print {
+      html, body { height: auto; overflow: visible; }
+      body { display: block; background: white; }
+      nav, .toolbar { display: none; }
+      main { padding: 0; gap: 0; }
+      .slide {
+        position: relative;
+        inset: auto;
+        width: 100vw;
+        height: 100vh;
+        box-shadow: none;
+        border-radius: 0;
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        display: flex;
+        page-break-after: always;
+        break-after: page;
+      }
+      body.print-current .slide {
+        display: none;
+      }
+      body.print-current .slide.active {
+        display: flex;
+      }
+    }
+    @media (max-width: 1200px) {
+      body {
+        display: block;
+      }
+      nav {
+        position: relative;
+        height: 54px;
+        padding: 8px 10px;
+        display: grid;
+        grid-template-columns: repeat(9, minmax(0, 1fr));
+        gap: 4px;
+        overflow: hidden;
+        overflow-y: hidden;
+      }
+      nav h1 {
+        display: none;
+      }
+      nav a {
+        display: block;
+        padding: 8px 4px;
+        border-left: 0;
+        border-bottom: 3px solid transparent;
+        border-radius: 6px 6px 0 0;
+        font-size: clamp(10px, 1.45vw, 13px);
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      nav a:hover,
+      nav a.active {
+        border-left-color: transparent;
+        border-bottom-color: var(--gold);
+      }
+      main {
+        height: calc(100vh - 54px);
+        padding: 8px;
+      }
+      .toolbar {
+        top: 8px;
+        left: 12px;
+        right: 12px;
+        justify-content: flex-end;
+      }
+      .toolbar > span {
+        display: none;
+      }
+      button {
+        padding: 6px 9px;
+        font-size: 12px;
+      }
+      .slide {
+        inset: 46px 8px 8px;
+        padding: 16px 18px;
+        gap: 8px;
+        border-radius: 7px;
+      }
+      h2 {
+        font-size: clamp(28px, 6.8vw, 42px);
+        line-height: 1.04;
+      }
+      .cover h2 {
+        font-size: clamp(36px, 8.4vw, 54px);
+      }
+      .subtitle {
+        font-size: clamp(15px, 3.3vw, 19px);
+        line-height: 1.25;
+      }
+      .rule {
+        width: 140px;
+        height: 3px;
+      }
+      .cover {
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 16px;
+      }
+      .grid2,
+      .grid3,
+      .grid4 {
+        gap: 10px;
+      }
+      .grid3 {
+        grid-template-columns: 1fr;
+      }
+      .grid4 {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      .metric {
+        margin-bottom: 8px;
+      }
+      .metric strong {
+        font-size: clamp(28px, 6.5vw, 42px);
+      }
+      .metric span {
+        font-size: 13px;
+      }
+      .step {
+        grid-template-columns: 30px 1fr;
+        gap: 8px;
+      }
+      .badge {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+      }
+      .step h3,
+      .block h3 {
+        font-size: clamp(15px, 3.8vw, 18px);
+        margin-bottom: 3px;
+      }
+      .step p,
+      .block p,
+      li {
+        font-size: clamp(13px, 2.8vw, 16px);
+        line-height: 1.22;
+      }
+      li {
+        margin-bottom: 4px;
+      }
+      .data-table,
+      .metric-table {
+        gap: 4px;
+      }
+      .data-row {
+        grid-template-columns: 1.05fr 0.45fr;
+        gap: 6px;
+        padding-bottom: 4px;
+      }
+      .data-row span {
+        grid-column: 1 / -1;
+      }
+      .metric-row {
+        grid-template-columns: 0.65fr 0.55fr 1fr;
+        gap: 6px;
+        padding-bottom: 5px;
+      }
+      .data-row b,
+      .metric-row b {
+        font-size: 14px;
+      }
+      .data-row strong,
+      .metric-row strong {
+        font-size: 17px;
+      }
+      .data-row span,
+      .metric-row span {
+        font-size: 12.5px;
+        line-height: 1.22;
+      }
+      footer {
+        font-size: 10px;
+      }
+      #slide-3 .grid2,
+      #slide-8 .grid2,
+      #slide-9 .grid2 {
+        flex: 1;
+      }
+      #slide-3 .data-table,
+      #slide-8 .metric-table {
+        height: 100%;
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <h1>Oil News Project Deck</h1>
+    <a href="#slide-1">1. Cover</a>
+    <a href="#slide-2">2. Workflow</a>
+    <a href="#slide-3">3. Data Foundation</a>
+    <a href="#slide-4">4. MySQL Schema</a>
+    <a href="#slide-5">5. Analysis Views</a>
+    <a href="#slide-6">6. Predictive Model</a>
+    <a href="#slide-7">7. Model Features</a>
+    <a href="#slide-8">8. Model Results</a>
+    <a href="#slide-9">9. Handoff</a>
+  </nav>
+  <main>
+    <div class="toolbar">
+      <span>Tip: click slide text to edit in the browser.</span>
+      <div class="deck-controls">
+        <button type="button" id="prev-slide" aria-label="Previous slide">Prev</button>
+        <span id="slide-status">1 / 9</span>
+        <button type="button" id="next-slide" aria-label="Next slide">Next</button>
+      </div>
+    </div>
+
+    <section class="slide cover active" id="slide-1">
+      <div>
+        <h2 contenteditable="true">Semantic News to Oil Price Signals</h2>
+        <div class="rule"></div>
+        <p class="subtitle" contenteditable="true">A MySQL-backed analytics project joining geopolitical risk, oil prices, events, and country exposure into a reproducible scikit-learn workflow.</p>
+      </div>
+      <div>
+        <div class="metric"><strong contenteditable="true">4,047</strong><span>daily market rows</span></div>
+        <div class="metric teal"><strong contenteditable="true">66,660</strong><span>country-month GPR rows</span></div>
+        <div class="metric gold"><strong contenteditable="true">1.516</strong><span>test RMSE, USD</span></div>
+      </div>
+      <footer><span>DatabaseProject - MySQL - scikit-learn - May 2026</span><span>Slide 1</span></footer>
+    </section>
+
+    <section class="slide" id="slide-2">
+      <h2 contenteditable="true">One workflow, three outputs</h2>
+      <p class="subtitle" contenteditable="true">The source CSVs become a queryable database, analysis surfaces, and predictive model artifacts.</p>
+      <div class="rule"></div>
+      <div class="grid2">
+        <div class="step"><div class="badge">1</div><div><h3 contenteditable="true">Datasets</h3><p contenteditable="true">Semantic news, market prices, events, country impact.</p></div></div>
+        <div class="step"><div class="badge">2</div><div><h3 contenteditable="true">MySQL</h3><p contenteditable="true">Operational source tables plus dim/fact reporting tables.</p></div></div>
+        <div class="step"><div class="badge">3</div><div><h3 contenteditable="true">Views</h3><p contenteditable="true">Daily oil/news features and event/country analysis.</p></div></div>
+        <div class="step"><div class="badge">4</div><div><h3 contenteditable="true">Model</h3><p contenteditable="true">StandardScaler -> Ridge Regression for next-day Brent.</p></div></div>
+      </div>
+      <footer><span>Final handoff includes scripts, schema docs, model, report, PDF, and deck.</span><span>Slide 2</span></footer>
+    </section>
+
+    <section class="slide" id="slide-3">
+      <h2 contenteditable="true">The data mixes market prices with semantic risk</h2>
+      <p class="subtitle" contenteditable="true">Coverage spans oil prices, GPR/news indices, events, and country-level exposure.</p>
+      <div class="rule"></div>
+      <div class="grid2">
+        <div class="data-table">
+          <div class="data-row"><b>ops_market_daily</b><strong>4,047</strong><span>Daily Brent/WTI, macro indicators, volatility, lags, and events.</span></div>
+          <div class="data-row"><b>ops_gpr_daily</b><strong>15,078</strong><span>Daily geopolitical risk/news index and article counts.</span></div>
+          <div class="data-row"><b>ops_gpr_country_monthly</b><strong>66,660</strong><span>Country-month geopolitical risk measures.</span></div>
+          <div class="data-row"><b>ops_events</b><strong>55</strong><span>Named geopolitical, sanctions, disaster, and market events.</span></div>
+          <div class="data-row"><b>ops_countries</b><strong>18</strong><span>Country dimension for impact and petrol analysis.</span></div>
+        </div>
+        <div>
+          <div class="metric"><strong>2010-2026</strong><span>market table date span</span></div>
+          <div class="metric teal"><strong>1985-2026</strong><span>daily GPR date span</span></div>
+          <p class="subtitle" contenteditable="true">The modeling table aligns Brent, WTI, volatility, GPR, event flags, and lag features for supervised learning.</p>
+        </div>
+      </div>
+      <footer><span>Semantic News and Oil Price Signals</span><span>Slide 3</span></footer>
+    </section>
+
+    <section class="slide" id="slide-4">
+      <h2 contenteditable="true">Two database layers keep analysis flexible</h2>
+      <p class="subtitle">Operational tables preserve source shape; dimensional tables support BI-style reporting.</p>
+      <div class="rule"></div>
+      <div class="grid2">
+        <div class="block"><h3>Operational layer</h3><ul><li>ops_market_daily</li><li>ops_gpr_daily and monthly</li><li>ops_events</li><li>ops_countries and petrol snapshots</li></ul></div>
+        <div class="block"><h3>Dimensional layer</h3><ul><li>dim_date, dim_country, dim_event</li><li>fact_market_daily</li><li>fact_gpr_daily and monthly</li><li>fact_country_impact and petrol prices</li></ul></div>
+      </div>
+      <footer><span>Primary joins: market_date = gpr_date, market_date = event_date, country_id, iso3.</span><span>Slide 4</span></footer>
+    </section>
+
+    <section class="slide" id="slide-5">
+      <h2>Views turn raw tables into analysis surfaces</h2>
+      <p class="subtitle">Three MySQL views package the joins needed for modeling, event study, and country impact analysis.</p>
+      <div class="rule"></div>
+      <div class="grid3">
+        <div class="block"><h3>vw_daily_oil_news_features</h3><p>Daily Brent/WTI, GPR, event, and volatility features for analysis and model inputs.</p></div>
+        <div class="block"><h3>vw_event_price_reaction</h3><p>Event-date oil price and risk indicators to inspect geopolitical market reactions.</p></div>
+        <div class="block"><h3>vw_country_petrol_impact</h3><p>Country exposure, petrol price snapshots, and vulnerability indicators in one reporting surface.</p></div>
+      </div>
+      <footer><span>SQL views live in sql/analytics_views.sql</span><span>Slide 5</span></footer>
+    </section>
+
+    <section class="slide" id="slide-6">
+      <h2>A transparent scikit-learn model predicts next-day Brent</h2>
+      <p class="subtitle">Chronological split, standardized features, regularized linear model, exported metrics.</p>
+      <div class="rule"></div>
+      <div class="grid2">
+        <div><div class="metric"><strong>3,236</strong><span>training rows</span></div><div class="metric teal"><strong>810</strong><span>test rows</span></div><div class="metric gold"><strong>0.1</strong><span>Ridge alpha</span></div></div>
+        <ul><li>Train through 2022-12-21; test through 2026-03-12</li><li>Scale market, risk, volatility, lag, and event features</li><li>Fit Ridge regression and save as a joblib pipeline</li><li>Export JSON metadata and CSV test predictions</li></ul>
+      </div>
+      <footer><span>Pipeline: StandardScaler -> Ridge Regression</span><span>Slide 6</span></footer>
+    </section>
+
+    <section class="slide" id="slide-7">
+      <h2>Features combine prices, risk, volatility, and events</h2>
+      <p class="subtitle">The model uses 20 fields from ops_market_daily.csv.</p>
+      <div class="rule"></div>
+      <div class="grid4">
+        <div class="metric"><strong>2</strong><span>current oil prices</span></div><div class="metric teal"><strong>2</strong><span>macro indicators</span></div><div class="metric gold"><strong>1</strong><span>GPR risk index</span></div><div class="metric red"><strong>2</strong><span>daily returns</span></div>
+        <div class="metric"><strong>6</strong><span>lagged prices</span></div><div class="metric teal"><strong>4</strong><span>volatility fields</span></div><div class="metric gold"><strong>1</strong><span>Brent-WTI spread</span></div><div class="metric red"><strong>2</strong><span>event features</span></div>
+      </div>
+      <footer><span>Feature groups are intentionally transparent for project review.</span><span>Slide 7</span></footer>
+    </section>
+
+    <section class="slide" id="slide-8">
+      <h2>The model narrowly beats a strong baseline</h2>
+      <p class="subtitle">Next-day oil pricing is hard because yesterday's price is already an excellent predictor.</p>
+      <div class="rule"></div>
+      <div class="grid2">
+        <div class="metric-table">
+          <div class="metric-row"><b>MAE</b><strong>1.118</strong><span>Model error in USD; baseline is 1.113.</span></div>
+          <div class="metric-row"><b>RMSE</b><strong>1.516</strong><span>Model error in USD; baseline is 1.536.</span></div>
+          <div class="metric-row"><b>MAPE</b><strong>1.463%</strong><span>Percent error on the chronological test set.</span></div>
+          <div class="metric-row"><b>R-squared</b><strong>0.967</strong><span>Variance explained on future holdout rows.</span></div>
+        </div>
+        <div><div class="metric"><strong>95.90</strong><span>latest next-day Brent prediction, USD</span></div><p class="subtitle">The result is credible because it is evaluated on a future holdout period, not a shuffled split.</p></div>
+      </div>
+      <footer><span>Baseline = previous trading-day Brent price.</span><span>Slide 8</span></footer>
+    </section>
+
+    <section class="slide" id="slide-9">
+      <h2>The handoff is reproducible</h2>
+      <p class="subtitle">Everything needed to load, train, predict, and present is in the workspace.</p>
+      <div class="rule"></div>
+      <div class="grid2">
+        <div class="block"><h3>Run path</h3><ul><li>python -m pip install -r requirements.txt</li><li>python src\load_mysql.py --replace</li><li>python src\train_oil_model.py</li><li>python src\predict_oil_price.py</li></ul></div>
+        <div class="block"><h3>Deliverables</h3><ul><li>MySQL loader and views</li><li>Database schema guide</li><li>Trained sklearn model</li><li>Markdown/PDF report</li><li>Editable deck source, PPTX, PDF, and HTML</li></ul></div>
+      </div>
+      <footer><span>Next: foreign keys/indexes, dashboarding, rolling-window validation, prediction tables.</span><span>Slide 9</span></footer>
+    </section>
+  </main>
+  <script>
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    const navLinks = Array.from(document.querySelectorAll("nav a"));
+    const status = document.getElementById("slide-status");
+    const prev = document.getElementById("prev-slide");
+    const next = document.getElementById("next-slide");
+    document
+      .querySelectorAll(".slide h2, .slide h3, .slide p, .slide li, .slide b, .slide strong, .slide span")
+      .forEach((node) => {
+        node.setAttribute("contenteditable", "true");
+        node.setAttribute("spellcheck", "false");
+      });
+
+    function indexFromHash() {
+      const match = window.location.hash.match(/^#slide-(\d+)$/);
+      if (!match) return 0;
+      return Math.min(Math.max(Number(match[1]) - 1, 0), slides.length - 1);
+    }
+
+    function showSlide(index, updateHash = true) {
+      slides.forEach((slide, idx) => slide.classList.toggle("active", idx === index));
+      navLinks.forEach((link, idx) => link.classList.toggle("active", idx === index));
+      status.textContent = `${index + 1} / ${slides.length}`;
+      prev.disabled = index === 0;
+      next.disabled = index === slides.length - 1;
+      if (updateHash) {
+        history.replaceState(null, "", `#slide-${index + 1}`);
+      }
+    }
+
+    function advance(delta) {
+      const current = slides.findIndex((slide) => slide.classList.contains("active"));
+      showSlide(Math.min(Math.max(current + delta, 0), slides.length - 1));
+    }
+
+    window.addEventListener("hashchange", () => showSlide(indexFromHash(), false));
+    prev.addEventListener("click", () => advance(-1));
+    next.addEventListener("click", () => advance(1));
+    document.addEventListener("keydown", (event) => {
+      const editing = event.target && event.target.isContentEditable;
+      if (editing) return;
+      if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") {
+        event.preventDefault();
+        advance(1);
+      }
+      if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        event.preventDefault();
+        advance(-1);
+      }
+      if (event.key === "Home") {
+        event.preventDefault();
+        showSlide(0);
+      }
+      if (event.key === "End") {
+        event.preventDefault();
+        showSlide(slides.length - 1);
+      }
+    });
+    showSlide(indexFromHash(), false);
+  </script>
+</body>
+</html>

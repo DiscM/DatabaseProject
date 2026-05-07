@@ -1,0 +1,18 @@
+{
+  "workspace": "C:\\Users\\ssala\\Desktop\\CodexTests\\DatabaseProject",
+  "pptx": "C:\\Users\\ssala\\Desktop\\CodexTests\\DatabaseProject\\output\\presentations\\oil_news_project_presentation.pptx",
+  "checks": {
+    "output_hygiene": {
+      "output_dir": "C:\\Users\\ssala\\Desktop\\CodexTests\\DatabaseProject\\output",
+      "unexpected_files": [
+        "pdf",
+        "presentations"
+      ]
+    }
+  },
+  "failures": [
+    "PPTX package inspection failed: unzip -Z1 C:\\Users\\ssala\\Desktop\\CodexTests\\DatabaseProject\\output\\presentations\\oil_news_project_presentation.pptx failed",
+    "output/ contains non-deliverable files: pdf, presentations"
+  ],
+  "warnings": []
+}
