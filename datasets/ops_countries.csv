@@ -1,0 +1,19 @@
+country_id,country_name,iso3,region_name,currency_code,oil_import_dependency
+1,Afghanistan,AFG,South Asia,AFN,High
+2,Australia,AUS,Oceania,AUD,
+3,Bangladesh,BGD,South Asia,BDT,High
+4,China,CHN,East Asia,USD,High
+5,Egypt,EGY,Africa,EGP,
+6,Germany,DEU,Europe,USD,Medium
+7,India,IND,South Asia,INR,High
+8,Iran,IRN,Middle East,USD,Low
+9,Japan,JPN,East Asia,JPY,
+10,Nepal,NPL,South Asia,NPR,High
+11,Pakistan,PAK,South Asia,PKR,High
+12,Saudi Arabia,SAU,Middle East,USD,Low
+13,South Korea,KOR,East Asia,KRW,
+14,Sri Lanka,LKA,South Asia,LKR,High
+15,Turkey,TUR,Europe/Asia,TRY,High
+16,UAE,ARE,Middle East,USD,Low
+17,USA,USA,North America,USD,Low
+18,United Kingdom,GBR,Europe,USD,Medium

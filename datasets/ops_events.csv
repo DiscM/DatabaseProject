@@ -1,0 +1,56 @@
+event_id,event_date,event_name,event_type,event_category,event_description,event_location,event_severity,source_dataset
+1,2010-04-20,Deepwater Horizon oil spill,disaster,Disaster,Deepwater Horizon oil spill,,7.0,geopolitical_events_timeline
+2,2011-02-15,Libyan Civil War begins,war,War,Libyan Civil War begins,,9.0,geopolitical_events_timeline
+3,2011-03-19,NATO intervention in Libya,war,War,NATO intervention in Libya,,9.0,geopolitical_events_timeline
+4,2012-01-23,EU embargo on Iranian oil imports,sanctions,Sanctions,EU embargo on Iranian oil imports,,8.0,geopolitical_events_timeline
+5,2014-03-18,Russia annexes Crimea,annexation,Annexation,Russia annexes Crimea,,8.0,geopolitical_events_timeline
+6,2014-11-27,OPEC maintains production despite falling prices,opec,Opec,OPEC maintains production despite falling prices,,9.0,geopolitical_events_timeline
+7,2015-03-26,Saudi-led intervention in Yemen,war,War,Saudi-led intervention in Yemen,,7.0,geopolitical_events_timeline
+8,2016-01-16,Iran nuclear sanctions lifted,sanctions,Sanctions,Iran nuclear sanctions lifted,,6.0,geopolitical_events_timeline
+9,2016-09-28,OPEC Algiers agreement on production cuts,opec,Opec,OPEC Algiers agreement on production cuts,,8.0,geopolitical_events_timeline
+10,2016-11-30,First OPEC+ production cut agreement,opec,Opec,First OPEC+ production cut agreement,,8.0,geopolitical_events_timeline
+11,2017-06-05,Qatar diplomatic crisis begins,diplomatic_crisis,Diplomatic_Crisis,Qatar diplomatic crisis begins,,6.0,geopolitical_events_timeline
+12,2018-05-08,US withdraws from Iran nuclear deal,sanctions,Sanctions,US withdraws from Iran nuclear deal,,8.0,geopolitical_events_timeline
+13,2019-09-14,Saudi Aramco Abqaiq oil facility attack,attack,Attack,Saudi Aramco Abqaiq oil facility attack,,10.0,geopolitical_events_timeline
+14,2020-01-03,US kills Iranian General Qasem Soleimani,conflict,Conflict,US kills Iranian General Qasem Soleimani,,9.0,geopolitical_events_timeline
+15,2020-03-08,Saudi-Russia oil price war begins,oil_price_war,Oil_Price_War,Saudi-Russia oil price war begins,,10.0,geopolitical_events_timeline
+16,2020-04-20,WTI crude prices turn negative,market_crash,Market_Crash,WTI crude prices turn negative,,10.0,geopolitical_events_timeline
+17,2021-03-23,Suez Canal blocked by Ever Given,blockage,Blockage,Suez Canal blocked by Ever Given,,8.0,geopolitical_events_timeline
+18,2021-10-04,Global energy crisis intensifies,energy_crisis,Energy_Crisis,Global energy crisis intensifies,,7.0,geopolitical_events_timeline
+19,2022-02-24,Russia invades Ukraine,war,War,Russia invades Ukraine,,10.0,geopolitical_events_timeline
+20,2022-03-08,US bans Russian oil imports,sanctions,Sanctions,US bans Russian oil imports,,9.0,geopolitical_events_timeline
+21,2022-06-01,EU oil embargo on Russia,sanctions,Sanctions,EU oil embargo on Russia,,8.0,geopolitical_events_timeline
+22,2022-12-05,G7 price cap on Russian oil,sanctions,Sanctions,G7 price cap on Russian oil,,7.0,geopolitical_events_timeline
+23,2023-04-02,OPEC+ announces surprise production cuts,opec,Opec,OPEC+ announces surprise production cuts,,9.0,geopolitical_events_timeline
+24,2023-10-07,Israel-Hamas war begins,war,War,Israel-Hamas war begins,,9.0,geopolitical_events_timeline
+25,2024-01-12,Red Sea shipping attacks escalate,conflict,Conflict,Red Sea shipping attacks escalate,,8.0,geopolitical_events_timeline
+26,2024-04-14,Iran launches drone attack on Israel,conflict,Conflict,Iran launches drone attack on Israel,,9.0,geopolitical_events_timeline
+27,2024-08-26,Libya eastern administration halts oil production,blockade,Blockade,Libya eastern administration halts oil production,,8.0,geopolitical_events_timeline
+28,2024-10-01,Expanded Red Sea tanker attacks,conflict,Conflict,Expanded Red Sea tanker attacks,,8.0,geopolitical_events_timeline
+29,2025-02-20,Middle East tanker security crisis,conflict,Conflict,Middle East tanker security crisis,,8.0,geopolitical_events_timeline
+30,2025-06-10,OPEC+ announces additional production cuts,opec,Opec,OPEC+ announces additional production cuts,,8.0,geopolitical_events_timeline
+31,2025-10-28,World Bank warns of major 2026 oil glut,market_shift,Market_Shift,World Bank warns of major 2026 oil glut,,7.0,geopolitical_events_timeline
+32,2025-11-18,Expanded Iran oil sanctions,sanctions,Sanctions,Expanded Iran oil sanctions,,7.0,geopolitical_events_timeline
+33,2025-12-01,Protests,political,Political,Widespread economic protests erupt across Iran — soaring prices & plummeting rial,Iran,,war_timeline
+34,2025-12-15,Internet Shutdown,political,Political,Iran government shuts down internet amid crackdown on protests,Iran,,war_timeline
+35,2026-01-10,US Military Buildup,military,Military,US bolsters military presence off Iran's coast; Trump says 'help is on the way',USA / Iran,,war_timeline
+36,2026-02-01,Geneva Talks Begin,diplomatic,Diplomatic,"Indirect US-Iran nuclear negotiations begin in Geneva, mediated by Oman",Switzerland,,war_timeline
+37,2026-02-25,Talks Collapse,diplomatic,Diplomatic,Geneva nuclear negotiations end without breakthrough,Switzerland,,war_timeline
+38,2026-02-28,Military Strikes Begin,military,Military,US-Israeli military strikes commence against Iran; Supreme Leader Khamenei assassinated,Iran,,war_timeline
+39,2026-02-28,US-Israel strikes on Iranian infrastructure,conflict,Conflict,US-Israel strikes on Iranian infrastructure,,10.0,geopolitical_events_timeline
+40,2026-03-01,Mojtaba Khamenei,political,Political,Mojtaba Khamenei selected as new Supreme Leader of Iran,Iran,,war_timeline
+41,2026-03-01,OPEC+ extends voluntary production cuts,opec,Opec,OPEC+ extends voluntary production cuts,,8.0,geopolitical_events_timeline
+42,2026-03-01,Strait of Hormuz Closed,military_energy,Military/Energy,Iran retaliates by closing Strait of Hormuz — 20% of world oil supply disrupted,Strait of Hormuz,,war_timeline
+43,2026-03-02,Oil Spikes,economic,Economic,Brent crude surges past $85/barrel; WTI jumps above $81,Global,,war_timeline
+44,2026-03-03,Risk Premium,economic,Economic,Goldman Sachs: traders demand additional $14/barrel risk premium,Global,,war_timeline
+45,2026-03-04,Qatar Gas Halt,energy,Energy,Qatar halts natural gas production after drone strikes on facilities,Qatar,,war_timeline
+46,2026-03-05,Bahrain Force Majeure,energy,Energy,Bahrain declares force majeure on oil shipments after Iranian attack,Bahrain,,war_timeline
+47,2026-03-05,Production Cuts,energy,Energy,"Iraq, Kuwait, UAE cut oil production — storage facilities filling up",Middle East,,war_timeline
+48,2026-03-06,Europe Gas Surge,economic,Economic,European natural gas prices surge nearly 67% since conflict began,Europe,,war_timeline
+49,2026-03-07,Bangladesh Closures,social,Social,Bangladesh closes universities to conserve electricity amid fuel crisis,Bangladesh,,war_timeline
+50,2026-03-07,Pakistan Price Hike,economic,Economic,Pakistan petrol price jumps 20.66% to PKR 321.17/L — largest single increase,Pakistan,,war_timeline
+51,2026-03-08,US Gas $3.41,economic,Economic,US national average gasoline reaches $3.41/gallon — up 14% in one week,USA,,war_timeline
+52,2026-03-09,$150 Warning,economic,Economic,Analysts warn oil could reach $150-$200/barrel if conflict persists,Global,,war_timeline
+53,2026-03-09,Brent $104,economic,Economic,Brent crude hits $104.25/barrel — highest since 2022; WTI at $102.88,Global,,war_timeline
+54,2026-03-09,Closure of Strait of Hormuz shipping lane,blockade,Blockade,Closure of Strait of Hormuz shipping lane,,10.0,geopolitical_events_timeline
+55,2026-03-09,Stock Crashes,economic,Economic,"Japan Nikkei -5%, South Korea KOSPI -6%, global markets tumble",Global,,war_timeline

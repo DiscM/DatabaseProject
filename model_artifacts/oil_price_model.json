@@ -1,0 +1,58 @@
+{
+  "model_type": "sklearn.pipeline.Pipeline(StandardScaler, Ridge)",
+  "target": "next_trading_day_brent_price_usd",
+  "trained_at": "2026-05-06",
+  "source_file": "datasets\\ops_market_daily.csv",
+  "feature_columns": [
+    "brent_price_usd",
+    "wti_price_usd",
+    "dxy_index",
+    "vix_index",
+    "gpr_index",
+    "brent_return",
+    "wti_return",
+    "brent_lag_1",
+    "brent_lag_3",
+    "brent_lag_7",
+    "wti_lag_1",
+    "wti_lag_3",
+    "wti_lag_7",
+    "brent_volatility_7d",
+    "brent_volatility_30d",
+    "wti_volatility_7d",
+    "wti_volatility_30d",
+    "brent_wti_spread",
+    "event_severity",
+    "event_flag"
+  ],
+  "model_file": "model_artifacts\\oil_price_model.joblib",
+  "alpha": 0.1,
+  "train_rows": 3236,
+  "test_rows": 810,
+  "train_date_range": [
+    "2010-02-18",
+    "2022-12-21"
+  ],
+  "test_date_range": [
+    "2022-12-22",
+    "2026-03-12"
+  ],
+  "train_metrics": {
+    "mae": 1.0797037238252245,
+    "rmse": 1.5670925894005907,
+    "mape_pct": 1.5152027082387876,
+    "r2": 0.9963583490886734
+  },
+  "test_metrics": {
+    "mae": 1.1183845480053138,
+    "rmse": 1.5158965359759458,
+    "mape_pct": 1.463229095514654,
+    "r2": 0.9668867637540156
+  },
+  "baseline_previous_price_metrics": {
+    "mae": 1.112567882773317,
+    "rmse": 1.5362304314966722,
+    "mape_pct": 1.4566167353663604,
+    "r2": 0.9659924586890304
+  }
+}

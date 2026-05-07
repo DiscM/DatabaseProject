@@ -1,0 +1,6 @@
+source_id,source_name,source_url,dataset_or_file
+1,Project proposal,Provided PDF,Group 8 Project Proposal .pdf
+2,Matteo Iacoviello GPR,https://www.matteoiacoviello.com/gpr.htm,data_gpr_export.xls; data_gpr_daily_recent.xls
+3,Kaggle global oil prices and geopolitical events,https://www.kaggle.com/datasets/kavyadhyani/global-oil-prices-and-geopolitical-events,oil_geopolitics_dataset_2010_2026.csv; geopolitical_events_timeline.csv
+4,Kaggle petrol prices impact of 2026 US-Iran war,https://www.kaggle.com/datasets/zkskhurram/global-petrol-prices-impact-of-2026-us-iran-war,petrol_prices_comparison.csv; crude_oil_daily.csv; war_timeline.csv; country_impact.csv; pros_cons_analysis.csv
+5,Dataset README,Provided README,README.md

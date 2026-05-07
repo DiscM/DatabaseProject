@@ -1,0 +1,17 @@
+analysis_item_id,category,analysis_type,title,description,impact_level,affected_scope,source_name
+1,Economy,Con,Inflation Surge,Every 10% oil rise → 0.4% inflation increase & 0.15% GDP reduction (IMF),High,All countries,IMF
+2,Economy,Con,Stagflation Risk,Combination of weak growth + high inflation threatens global recession,Critical,Global,FreightWaves
+3,Economy,Con,Supply Chain Disruption,Higher transport costs cascade through all goods and services,High,Global,Straits Financial
+4,Economy,Pro,Oil Exporter Windfall,"Net oil exporters see increased revenues, investment, and GDP growth",Moderate,"Oil exporters (USA, Saudi, UAE)",Bison Interests
+5,Environment,Pro,Accelerated Green Transition,"High prices incentivize renewable energy, EVs, and energy efficiency",Moderate,Global,Forbes/Climate Council
+6,Environment,Pro,Reduced Consumption,"Consumers cut driving, shift to public transport & fuel-efficient vehicles",Moderate,Consumers worldwide,Brookings
+7,Environment,Con,Short-term Emissions,Developing countries may increase coal/dirty fuel use as oil substitute,Low,Developing economies,ESMAP
+8,Consumers,Con,Reduced Purchasing Power,Low-income households disproportionately affected; less disposable income,Critical,Low/middle-income households,Brookings
+9,Consumers,Con,Cost of Living Crisis,"Transport, food, heating costs all rise with fuel prices",High,All consumers,The Guardian
+10,Consumers,Con,Rockets & Feathers Effect,Prices rise fast when oil goes up but fall slowly when it drops,Moderate,All consumers,RNZ
+11,Consumers,Pro,Long-term EV Adoption,"High prices accelerate shift to electric/hybrid vehicles, reducing future exposure",Moderate,Vehicle owners,Forbes
+12,Developing Countries,Con,Balance of Payments Crisis,Oil-importing developing nations face severe foreign exchange drain,Critical,"Pakistan, Bangladesh, Sri Lanka, Egypt",ESMAP/World Bank
+13,Developing Countries,Con,Poverty Increase,Rising fuel + food prices push millions below poverty line,Critical,Urban poor globally,IMF
+14,Developing Countries,Con,Weak Market Response,Limited ability to quickly reduce oil dependency; lack of alternatives,High,Least developed countries,ESMAP
+15,Developing Countries,Pro,Diversification Push,Crisis creates urgency to explore domestic renewable energy sources,Low,Oil-importing developing nations,ESMAP
+16,Geopolitics,Con,Regional Destabilization,Conflict disrupts 20% of world oil supply through Strait of Hormuz,Critical,Global,Al Jazeera/Wikipedia
