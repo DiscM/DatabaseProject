@@ -15,6 +15,10 @@ The data combines:
 
 The project keeps two complementary database layers: operational source-style tables for modeling and exploration, plus dimensional tables for BI-style reporting. Full column-level ERDs are available in [docs/database_schema.md](docs/database_schema.md).
 
+### Operational ERD
+
+The operational layer preserves the source-style CSV tables used for exploration, joins, and model feature engineering.
+
 ```mermaid
 erDiagram
     ops_countries ||--o{ ops_country_impact : country_id
@@ -24,6 +28,10 @@ erDiagram
     ops_market_daily ||--o| ops_events : "market_date = event_date"
     ops_market_daily ||--o| ops_crude_oil_daily : "market_date = trade_date"
 ```
+
+### Dimensional Reporting ERD
+
+The dimensional layer organizes dates, countries, events, market facts, GPR facts, and petrol impact facts for BI-style reporting.
 
 ```mermaid
 erDiagram
@@ -35,6 +43,14 @@ erDiagram
     dim_country ||--o{ fact_country_impact : country_key
     dim_country ||--o{ fact_petrol_prices : country_key
 ```
+
+### Analysis Views
+
+After loading the CSV tables, `src/load_mysql.py` applies `sql/analytics_views.sql` to create analysis-ready joins:
+
+- `vw_daily_oil_news_features`: daily Brent/WTI, GPR, event, and volatility features for modeling.
+- `vw_event_price_reaction`: event dates paired with same-day oil price and risk indicators.
+- `vw_country_petrol_impact`: country exposure, petrol price snapshots, and vulnerability indicators.
 
 ## Project Layout
 
