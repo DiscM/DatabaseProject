@@ -75,6 +75,8 @@ Option A: use the included Docker service.
 docker compose up -d
 ```
 
+The Docker service starts the MySQL server only. It does not automatically create the project tables or load the CSV datasets. After MySQL is running, use the loader in step 3 to create the schema, import the datasets, and apply the analysis views.
+
 Option B: use an existing MySQL instance and create `.env` from the example.
 
 ```powershell
@@ -96,6 +98,8 @@ python -m pip install -r requirements.txt
 ```powershell
 python src\load_mysql.py --replace
 ```
+
+Run this after the Docker MySQL container is running, or after your existing MySQL server is configured in `.env`.
 
 The loader:
 
