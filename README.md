@@ -11,10 +11,36 @@ The data combines:
 - Country-level petrol exposure and impacts (`ops_countries`, `ops_country_impact`, `ops_petrol_price_snapshots`)
 - Warehouse-ready dimensions and facts (`dim_*`, `fact_*`)
 
+## Database Schema
+
+The project keeps two complementary database layers: operational source-style tables for modeling and exploration, plus dimensional tables for BI-style reporting. Full column-level ERDs are available in [docs/database_schema.md](docs/database_schema.md).
+
+```mermaid
+erDiagram
+    ops_countries ||--o{ ops_country_impact : country_id
+    ops_countries ||--o{ ops_petrol_price_snapshots : country_id
+    ops_countries ||--o{ ops_gpr_country_monthly : iso3
+    ops_market_daily ||--o| ops_gpr_daily : "market_date = gpr_date"
+    ops_market_daily ||--o| ops_events : "market_date = event_date"
+    ops_market_daily ||--o| ops_crude_oil_daily : "market_date = trade_date"
+```
+
+```mermaid
+erDiagram
+    dim_date ||--o{ dim_event : date_key
+    dim_date ||--o{ fact_market_daily : date_key
+    dim_date ||--o{ fact_gpr_daily : date_key
+    dim_date ||--o{ fact_gpr_monthly : date_key
+    dim_date ||--o{ fact_petrol_prices : date_key
+    dim_country ||--o{ fact_country_impact : country_key
+    dim_country ||--o{ fact_petrol_prices : country_key
+```
+
 ## Project Layout
 
 ```text
 datasets/                  Source CSV files supplied in the workspace
+docs/database_schema.md     Full column-level operational and dimensional ERDs
 sql/analytics_views.sql    MySQL views for analysis-ready joins
 src/load_mysql.py          CSV-to-MySQL loader with inferred table schemas
 src/train_oil_model.py     scikit-learn Ridge regression training pipeline
