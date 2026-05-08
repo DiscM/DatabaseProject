@@ -179,27 +179,6 @@ Latest example prediction:
 |---|---:|---:|
 | 2026-03-12 | 95.76 USD | 95.90 USD |
 
-## Generated Artifacts
-
-| Artifact | Purpose |
-|---|---|
-| `model_artifacts/oil_price_model.joblib` | Fitted scikit-learn pipeline |
-| `model_artifacts/oil_price_model.json` | Model metadata, metrics, feature names, and date ranges |
-| `model_artifacts/test_predictions.csv` | Test-set predictions against actual Brent prices |
-| `docs/database_schema.md` | Mermaid ERD and schema notes |
-| `sql/analytics_views.sql` | SQL views for joined analysis |
-| `reports/oil_news_database_model_report.md` | Markdown version of this report |
-| `output/pdf/oil_news_database_model_report.pdf` | PDF version of this report |
-
-## Recommended Next Steps
-
-- Add explicit foreign key constraints after confirming load order and null behavior.
-- Add indexes on dates and join keys such as `market_date`, `gpr_date`, `event_date`, `country_id`, and `iso3`.
-- Add a notebook or dashboard that reads from `vw_daily_oil_news_features`.
-- Compare Ridge against tree-based scikit-learn models such as `RandomForestRegressor` or `HistGradientBoostingRegressor`.
-- Add rolling-window validation to better evaluate model stability over time.
-- Store model predictions back into MySQL in a `model_predictions` table for dashboarding.
-
 ## Conclusion
 
 The completed project demonstrates a full data workflow: source CSVs are transformed into a MySQL-ready analytical database, semantic news and geopolitical risk signals are joined with oil market features, and a scikit-learn predictive model is trained and exported. The result is suitable for a database project presentation because it includes schema design, SQL loading, analysis views, reproducible modeling, and report-ready artifacts.
