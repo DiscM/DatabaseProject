@@ -1,13 +1,16 @@
 """visualize_predictions.py
 Interactive Plotly visualizations for the Brent oil price model.
 
-Produces four charts — all fully zoomable and pannable with week-by-week
+Produces two charts -- all fully zoomable and pannable with week-by-week
 range-selector buttons:
 
-  1. Actual vs Predicted (test set line chart)
-  2. Prediction accuracy scatter (actual vs predicted)
-  3. Model vs Baseline vs Actual (test set)
-  4. Forward forecast — recent actual prices bridged to future predictions
+  1. Prediction accuracy scatter (actual vs predicted)
+  2. Model vs Baseline vs Actual (test set) + forward forecast extension
+     with a shaded +/-1 sigma confidence band
+
+The forward forecast line bridges from the last test-set date and extends
+at least 5 trading days (one week) beyond the data cut-off, with a
+confidence band derived from the per-horizon test-set RMSE.
 
 Run standalone:
     python Visualization/visualize_predictions.py
@@ -44,9 +47,9 @@ def _range_buttons() -> dict:
     )
 
 
-def _time_xaxis(title: str = "Date") -> dict:
+def _time_xaxis(title: str = "Date", x_range: list | None = None) -> dict:
     """Standard date x-axis with range selector and slider."""
-    return dict(
+    axis = dict(
         title=title,
         type="date",
         rangeselector=_range_buttons(),
@@ -54,6 +57,9 @@ def _time_xaxis(title: str = "Date") -> dict:
         showgrid=True,
         gridcolor="#e5e5e5",
     )
+    if x_range is not None:
+        axis["range"] = x_range
+    return axis
 
 
 def _base_layout(**kwargs) -> dict:
@@ -69,41 +75,126 @@ def _base_layout(**kwargs) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Chart builders
+# Forecast loading
 # ---------------------------------------------------------------------------
 
-def _chart_actual_vs_predicted(
-    df: pd.DataFrame,
-    actual_col: str,
-    predicted_col: str,
-    horizon_label: str,
-) -> go.Figure:
-    fig = go.Figure()
+def _load_forecast(
+    forecast_csv_path: str | None,
+    last_test_date: pd.Timestamp,
+    last_test_price: float,
+) -> tuple:
+    """
+    Load forward_forecast.csv and build bridged series starting from the
+    last actual test-set point (so forecast and test lines connect visually).
 
+    Supports two CSV formats:
+      - Monte Carlo format: columns p10 / p25 / p75 / p90
+      - Legacy format: columns lower_1sigma / upper_1sigma
+
+    Returns:
+        bridge_dates, bridge_median,
+        bridge_p10, bridge_p25, bridge_p75, bridge_p90,
+        forecast_end
+    All band series are None when not present in the CSV.
+    """
+    _empty = (None, None, None, None, None, None, None)
+    if forecast_csv_path is None:
+        return _empty
+    try:
+        fc = pd.read_csv(forecast_csv_path)
+    except FileNotFoundError:
+        return _empty
+    if fc.empty:
+        return _empty
+
+    fc["forecast_date"] = pd.to_datetime(fc["forecast_date"])
+    fc_sorted = fc.sort_values("forecast_date")
+
+    def _bridge(series: pd.Series) -> pd.Series:
+        """Prepend the anchor (last test-set) value so lines connect."""
+        return pd.concat([pd.Series([last_test_price]), series.astype(float)],
+                         ignore_index=True)
+
+    bridge_dates  = pd.concat(
+        [pd.Series([last_test_date]), fc_sorted["forecast_date"]],
+        ignore_index=True,
+    )
+    bridge_median = _bridge(fc_sorted["predicted_brent_usd"])
+
+    # Monte Carlo percentile bands
+    if all(c in fc_sorted.columns for c in ("p10", "p25", "p75", "p90")):
+        bridge_p10 = _bridge(fc_sorted["p10"])
+        bridge_p25 = _bridge(fc_sorted["p25"])
+        bridge_p75 = _bridge(fc_sorted["p75"])
+        bridge_p90 = _bridge(fc_sorted["p90"])
+    # Legacy +/-1sigma fallback
+    elif "lower_1sigma" in fc_sorted.columns:
+        bridge_p10 = bridge_p25 = _bridge(fc_sorted["lower_1sigma"])
+        bridge_p75 = bridge_p90 = _bridge(fc_sorted["upper_1sigma"])
+    else:
+        bridge_p10 = bridge_p25 = bridge_p75 = bridge_p90 = None
+
+    forecast_end = fc_sorted["forecast_date"].max()
+    return bridge_dates, bridge_median, bridge_p10, bridge_p25, bridge_p75, bridge_p90, forecast_end
+
+
+# ---------------------------------------------------------------------------
+# Forecast traces
+# ---------------------------------------------------------------------------
+
+def _add_forecast_traces(
+    fig,
+    bridge_dates,
+    bridge_median,
+    bridge_p10,
+    bridge_p25,
+    bridge_p75,
+    bridge_p90,
+    last_test_date,
+    forecast_end,
+):
+    """Draw the Monte Carlo probability fan: outer/inner bands + median line."""
+    if bridge_p10 is not None:
+        fig.add_trace(go.Scatter(
+            x=bridge_dates, y=bridge_p90, mode="lines",
+            line=dict(width=0), showlegend=False, hoverinfo="skip", name="_p90",
+        ))
+        fig.add_trace(go.Scatter(
+            x=bridge_dates, y=bridge_p10, mode="lines", line=dict(width=0),
+            fill="tonexty", fillcolor="rgba(255,140,0,0.10)",
+            showlegend=True, name="P10-P90 Range",
+            hovertemplate="%{x|%Y-%m-%d}<br>P10: $%{y:.2f}<extra></extra>",
+        ))
+        fig.add_trace(go.Scatter(
+            x=bridge_dates, y=bridge_p75, mode="lines",
+            line=dict(width=0), showlegend=False, hoverinfo="skip", name="_p75",
+        ))
+        fig.add_trace(go.Scatter(
+            x=bridge_dates, y=bridge_p25, mode="lines", line=dict(width=0),
+            fill="tonexty", fillcolor="rgba(255,140,0,0.22)",
+            showlegend=True, name="P25-P75 Range",
+            hovertemplate="%{x|%Y-%m-%d}<br>P25: $%{y:.2f}<extra></extra>",
+        ))
     fig.add_trace(go.Scatter(
-        x=df["market_date"],
-        y=df[actual_col],
-        name="Actual Brent Price",
-        line=dict(color="royalblue", width=2),
-        opacity=0.85,
-        hovertemplate="%{x|%Y-%m-%d}<br>Actual: $%{y:.2f}<extra></extra>",
+        x=bridge_dates, y=bridge_median,
+        name="Forecast Median",
+        line=dict(color="darkorange", width=2.5, dash="dash"),
+        mode="lines+markers",
+        marker=dict(size=6, color="darkorange", symbol="circle"),
+        hovertemplate="%{x|%Y-%m-%d}<br>Median: $%{y:.2f}<extra></extra>",
     ))
-    fig.add_trace(go.Scatter(
-        x=df["market_date"],
-        y=df[predicted_col],
-        name=f"Predicted ({horizon_label})",
-        line=dict(color="darkorange", width=2),
-        opacity=0.85,
-        hovertemplate="%{x|%Y-%m-%d}<br>Predicted: $%{y:.2f}<extra></extra>",
-    ))
+    fig.add_vrect(
+        x0=last_test_date, x1=forecast_end,
+        fillcolor="darkorange", opacity=0.04, layer="below", line_width=0,
+        annotation=dict(text="Forecast Window",
+                        font=dict(size=11, color="darkorange"), align="left"),
+        annotation_position="top left",
+    )
 
-    fig.update_layout(**_base_layout(
-        title=f"Brent Crude Oil: Actual vs Predicted — {horizon_label} (Test Set)",
-        xaxis=_time_xaxis(),
-        yaxis=dict(title="Price (USD)", showgrid=True, gridcolor="#e5e5e5"),
-    ))
-    return fig
 
+# ---------------------------------------------------------------------------
+# Chart builders
+# ---------------------------------------------------------------------------
 
 def _chart_scatter(
     df: pd.DataFrame,
@@ -115,7 +206,6 @@ def _chart_scatter(
     max_val = max(df[actual_col].max(), df[predicted_col].max())
 
     fig = go.Figure()
-
     fig.add_trace(go.Scatter(
         x=df[actual_col],
         y=df[predicted_col],
@@ -131,7 +221,6 @@ def _chart_scatter(
         line=dict(color="crimson", dash="dash", width=1.5),
         name="Perfect Prediction (y = x)",
     ))
-
     fig.update_layout(**_base_layout(
         title=f"Prediction Accuracy: Actual vs Predicted ({horizon_label})",
         xaxis=dict(title="Actual Price (USD)", showgrid=True, gridcolor="#e5e5e5"),
@@ -146,6 +235,14 @@ def _chart_model_vs_baseline(
     actual_col: str,
     predicted_col: str,
     horizon_label: str,
+    bridge_dates: pd.Series | None,
+    bridge_median: pd.Series | None,
+    bridge_p10: pd.Series | None,
+    bridge_p25: pd.Series | None,
+    bridge_p75: pd.Series | None,
+    bridge_p90: pd.Series | None,
+    last_test_date: pd.Timestamp | None,
+    forecast_end: pd.Timestamp | None,
 ) -> go.Figure:
     fig = go.Figure()
 
@@ -172,91 +269,25 @@ def _chart_model_vs_baseline(
         hovertemplate="%{x|%Y-%m-%d}<br>Baseline: $%{y:.2f}<extra></extra>",
     ))
 
-    fig.update_layout(**_base_layout(
-        title=f"Model vs Baseline vs Actual — {horizon_label}",
-        xaxis=_time_xaxis(),
-        yaxis=dict(title="Price (USD)", showgrid=True, gridcolor="#e5e5e5"),
-    ))
-    return fig
+    # Append forecast if available
+    if bridge_dates is not None:
+        _add_forecast_traces(
+            fig, bridge_dates, bridge_median,
+            bridge_p10, bridge_p25, bridge_p75, bridge_p90,
+            last_test_date, forecast_end,
+        )
+        x_end = forecast_end + pd.Timedelta(days=3)
+    else:
+        x_end = df["market_date"].max() + pd.Timedelta(days=3)
 
-
-def _chart_forward_forecast(
-    forecast_csv_path: str | None,
-    market_csv_path: str | None,
-    horizon_label: str,
-) -> go.Figure | None:
-    if forecast_csv_path is None or market_csv_path is None:
-        print("Skipping forward forecast plot (no forecast CSV or market CSV provided).")
-        return None
-
-    try:
-        fc = pd.read_csv(forecast_csv_path)
-        market = pd.read_csv(market_csv_path)
-    except FileNotFoundError as exc:
-        print(f"Skipping forward forecast plot: {exc}")
-        return None
-
-    fc["forecast_date"] = pd.to_datetime(fc["forecast_date"])
-    market["market_date"] = pd.to_datetime(market["market_date"])
-    market = market.sort_values("market_date")
-
-    recent = market.tail(60).copy()
-    last_actual_date = recent["market_date"].iloc[-1]
-    last_actual_price = float(recent["brent_price_usd"].iloc[-1])
-
-    fc_sorted = fc.sort_values("forecast_date")
-
-    # Bridge: prepend the last actual point so the forecast line connects cleanly
-    bridge_dates = pd.concat(
-        [pd.Series([last_actual_date]), fc_sorted["forecast_date"]],
-        ignore_index=True,
-    )
-    bridge_prices = pd.concat(
-        [pd.Series([last_actual_price]), fc_sorted["predicted_brent_usd"].astype(float)],
-        ignore_index=True,
-    )
-
-    fig = go.Figure()
-
-    # Recent actual prices
-    fig.add_trace(go.Scatter(
-        x=recent["market_date"],
-        y=recent["brent_price_usd"].astype(float),
-        name="Actual Brent Price (Recent)",
-        line=dict(color="royalblue", width=2.5),
-        hovertemplate="%{x|%Y-%m-%d}<br>Actual: $%{y:.2f}<extra></extra>",
-    ))
-
-    # Bridged forecast line
-    fig.add_trace(go.Scatter(
-        x=bridge_dates,
-        y=bridge_prices,
-        name="Forecasted Brent Price",
-        line=dict(color="crimson", width=2.5, dash="dash"),
-        mode="lines+markers",
-        marker=dict(size=7, color="crimson", symbol="circle"),
-        hovertemplate="%{x|%Y-%m-%d}<br>Forecast: $%{y:.2f}<extra></extra>",
-    ))
-
-    # Shaded forecast window
-    fig.add_vrect(
-        x0=last_actual_date,
-        x1=fc_sorted["forecast_date"].max(),
-        fillcolor="crimson",
-        opacity=0.06,
-        layer="below",
-        line_width=0,
-        annotation=dict(
-            text="Forecast Window",
-            font=dict(size=11, color="crimson"),
-            align="left",
-        ),
-        annotation_position="top left",
-    )
+    # Default zoom: show ~6 weeks of history + full forecast window
+    # This guarantees the forecast (at least 1 week) is clearly visible
+    six_weeks_before_end = x_end - pd.DateOffset(weeks=6)
+    x_start = min(six_weeks_before_end, last_test_date - pd.DateOffset(weeks=4))
 
     fig.update_layout(**_base_layout(
-        title=f"Brent Crude Oil — Forward Price Forecast ({horizon_label})",
-        xaxis=_time_xaxis(),
+        title=f"Model vs Baseline vs Actual -- {horizon_label} (Test Set + Forecast)",
+        xaxis=_time_xaxis(x_range=[x_start, x_end]),
         yaxis=dict(title="Price (USD)", showgrid=True, gridcolor="#e5e5e5"),
     ))
     return fig
@@ -268,64 +299,70 @@ def _chart_forward_forecast(
 
 def create_visualizations(
     predictions_csv_path: str,
-    output_dir: str | None = None,   # kept for API compatibility; no files are written
+    output_dir: str | None = None,   # kept for API compatibility; no files written
     forecast_csv_path: str | None = None,
-    market_csv_path: str | None = None,
+    market_csv_path: str | None = None,  # kept for API compatibility; unused
 ) -> None:
     """
-    Generate four interactive Plotly charts for the Brent oil price model.
+    Generate two interactive Plotly charts for the Brent oil price model.
 
-    Charts display inline in Jupyter or open in the browser when run as a
-    standalone script. No PNG files are written to disk.
+    Charts display inline in Jupyter or open in the browser when run
+    standalone. No PNG files are written to disk.
 
     Parameters
     ----------
     predictions_csv_path : str
-        Path to model_artifacts/test_predictions.csv produced by train_oil_model.py.
-    output_dir : str | None
-        Ignored — kept for backwards compatibility.
+        Path to model_artifacts/test_predictions.csv (from train_oil_model.py).
     forecast_csv_path : str | None
-        Path to model_artifacts/forward_forecast.csv produced by predict_oil_price.py.
-    market_csv_path : str | None
-        Path to datasets/ops_market_daily.csv (used for the forward forecast chart).
+        Path to model_artifacts/forward_forecast.csv (from predict_oil_price.py).
+        If present the forecast line + confidence band are added to chart 2.
+    output_dir, market_csv_path : ignored (backward compat).
     """
     print(f"Loading predictions from {predictions_csv_path} ...")
     try:
         df = pd.read_csv(predictions_csv_path)
     except FileNotFoundError:
-        print(f"Error: Could not find {predictions_csv_path}. "
-              "Ensure the model has been trained first.")
+        print(f"Error: {predictions_csv_path} not found. Train the model first.")
         return
 
     df["market_date"] = pd.to_datetime(df["market_date"])
     df = df.sort_values("market_date")
 
     # Horizon label
-    horizon_days = int(df["horizon_days"].iloc[0]) if "horizon_days" in df.columns else 5
+    horizon_days   = int(df["horizon_days"].iloc[0]) if "horizon_days" in df.columns else 1
     calendar_weeks = round(horizon_days / 5)
-    week_str = f"~{calendar_weeks} Week{'s' if calendar_weeks != 1 else ''}"
-    horizon_label = f"{horizon_days} Trading Days ({week_str}) Ahead"
+    week_str       = f"~{calendar_weeks} Week{'s' if calendar_weeks != 1 else ''}"
+    horizon_label  = f"{horizon_days} Trading Day{'s' if horizon_days != 1 else ''} ({week_str}) Ahead"
 
     # Column name compatibility (old vs new schema)
     actual_col    = "actual_brent_future"    if "actual_brent_future"    in df.columns else "actual_brent_next"
     predicted_col = "predicted_brent_future" if "predicted_brent_future" in df.columns else "predicted_brent_next"
 
-    # 1. Actual vs Predicted line chart
-    fig1 = _chart_actual_vs_predicted(df, actual_col, predicted_col, horizon_label)
+    # Bridge point: connect forecast from the last predicted price
+    last_test_date            = df["market_date"].iloc[-1]
+    last_test_predicted_price = float(df[predicted_col].iloc[-1])
+
+    # Load forecast (Monte Carlo format with percentile bands)
+    (
+        bridge_dates, bridge_median,
+        bridge_p10, bridge_p25, bridge_p75, bridge_p90,
+        forecast_end,
+    ) = _load_forecast(forecast_csv_path, last_test_date, last_test_predicted_price)
+    if forecast_csv_path and bridge_dates is None:
+        print("Warning: forecast CSV not loaded -- chart will show test set only.")
+
+    # 1. Scatter: accuracy correlation
+    fig1 = _chart_scatter(df, actual_col, predicted_col, horizon_label)
     fig1.show()
 
-    # 2. Scatter: correlation / accuracy
-    fig2 = _chart_scatter(df, actual_col, predicted_col, horizon_label)
+    # 2. Time-series: model vs baseline + Monte Carlo fan + median
+    fig2 = _chart_model_vs_baseline(
+        df, actual_col, predicted_col, horizon_label,
+        bridge_dates, bridge_median,
+        bridge_p10, bridge_p25, bridge_p75, bridge_p90,
+        last_test_date, forecast_end,
+    )
     fig2.show()
-
-    # 3. Model vs Baseline vs Actual
-    fig3 = _chart_model_vs_baseline(df, actual_col, predicted_col, horizon_label)
-    fig3.show()
-
-    # 4. Forward forecast
-    fig4 = _chart_forward_forecast(forecast_csv_path, market_csv_path, horizon_label)
-    if fig4 is not None:
-        fig4.show()
 
 
 # ---------------------------------------------------------------------------
@@ -338,6 +375,5 @@ if __name__ == "__main__":
 
     _predictions = str(_project_root / "model_artifacts" / "test_predictions.csv")
     _forecast    = str(_project_root / "model_artifacts" / "forward_forecast.csv")
-    _market      = str(_project_root / "datasets"        / "ops_market_daily.csv")
 
-    create_visualizations(_predictions, forecast_csv_path=_forecast, market_csv_path=_market)
+    create_visualizations(_predictions, forecast_csv_path=_forecast)

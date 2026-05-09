@@ -1,6 +1,8 @@
 {
   "model_type": "sklearn.pipeline.Pipeline(StandardScaler, Ridge)",
-  "target": "next_trading_day_brent_price_usd",
+  "strategy": "direct_multi_step",
+  "max_horizon_trading_days": 10,
+  "horizon_trading_days": 1,
   "trained_at": "2026-05-09",
   "source_file": "datasets\\ops_market_daily.csv",
   "feature_columns": [
@@ -25,29 +27,162 @@
     "event_severity",
     "event_flag"
   ],
+  "computed_feature_names": [
+    "brent_momentum_7d",
+    "brent_accel",
+    "vol_regime"
+  ],
   "model_file": "model_artifacts\\oil_price_model.joblib",
   "alpha": 0.1,
+  "per_horizon": {
+    "1": {
+      "model_file": "model_artifacts\\oil_price_model_h1.joblib",
+      "rmse": 1.5187,
+      "mae": 1.121,
+      "r2": 0.966766,
+      "mape_pct": 1.4666,
+      "train_rows": 3236,
+      "test_rows": 810,
+      "test_date_range": [
+        "2022-12-22",
+        "2026-03-12"
+      ]
+    },
+    "2": {
+      "model_file": "model_artifacts\\oil_price_model_h2.joblib",
+      "rmse": 2.1901,
+      "mae": 1.6132,
+      "r2": 0.930939,
+      "mape_pct": 2.1058,
+      "train_rows": 3236,
+      "test_rows": 809,
+      "test_date_range": [
+        "2022-12-23",
+        "2026-03-12"
+      ]
+    },
+    "3": {
+      "model_file": "model_artifacts\\oil_price_model_h3.joblib",
+      "rmse": 2.6593,
+      "mae": 1.9789,
+      "r2": 0.898186,
+      "mape_pct": 2.5827,
+      "train_rows": 3235,
+      "test_rows": 809,
+      "test_date_range": [
+        "2022-12-23",
+        "2026-03-12"
+      ]
+    },
+    "4": {
+      "model_file": "model_artifacts\\oil_price_model_h4.joblib",
+      "rmse": 3.0461,
+      "mae": 2.2793,
+      "r2": 0.866412,
+      "mape_pct": 2.9673,
+      "train_rows": 3234,
+      "test_rows": 809,
+      "test_date_range": [
+        "2022-12-23",
+        "2026-03-12"
+      ]
+    },
+    "5": {
+      "model_file": "model_artifacts\\oil_price_model_h5.joblib",
+      "rmse": 3.4374,
+      "mae": 2.5535,
+      "r2": 0.829885,
+      "mape_pct": 3.3185,
+      "train_rows": 3233,
+      "test_rows": 809,
+      "test_date_range": [
+        "2022-12-23",
+        "2026-03-12"
+      ]
+    },
+    "6": {
+      "model_file": "model_artifacts\\oil_price_model_h6.joblib",
+      "rmse": 3.7346,
+      "mae": 2.7592,
+      "r2": 0.799194,
+      "mape_pct": 3.5785,
+      "train_rows": 3232,
+      "test_rows": 809,
+      "test_date_range": [
+        "2022-12-23",
+        "2026-03-12"
+      ]
+    },
+    "7": {
+      "model_file": "model_artifacts\\oil_price_model_h7.joblib",
+      "rmse": 3.9655,
+      "mae": 2.9335,
+      "r2": 0.773651,
+      "mape_pct": 3.7987,
+      "train_rows": 3232,
+      "test_rows": 808,
+      "test_date_range": [
+        "2022-12-27",
+        "2026-03-12"
+      ]
+    },
+    "8": {
+      "model_file": "model_artifacts\\oil_price_model_h8.joblib",
+      "rmse": 4.1794,
+      "mae": 3.1127,
+      "r2": 0.748575,
+      "mape_pct": 4.0248,
+      "train_rows": 3231,
+      "test_rows": 808,
+      "test_date_range": [
+        "2022-12-27",
+        "2026-03-12"
+      ]
+    },
+    "9": {
+      "model_file": "model_artifacts\\oil_price_model_h9.joblib",
+      "rmse": 4.3856,
+      "mae": 3.2548,
+      "r2": 0.723148,
+      "mape_pct": 4.2056,
+      "train_rows": 3230,
+      "test_rows": 808,
+      "test_date_range": [
+        "2022-12-27",
+        "2026-03-12"
+      ]
+    },
+    "10": {
+      "model_file": "model_artifacts\\oil_price_model_h10.joblib",
+      "rmse": 4.5363,
+      "mae": 3.361,
+      "r2": 0.703797,
+      "mape_pct": 4.3363,
+      "train_rows": 3229,
+      "test_rows": 808,
+      "test_date_range": [
+        "2022-12-27",
+        "2026-03-12"
+      ]
+    }
+  },
   "train_rows": 3236,
   "test_rows": 810,
-  "train_date_range": [
-    "2010-02-18",
-    "2022-12-21"
-  ],
   "test_date_range": [
     "2022-12-22",
     "2026-03-12"
   ],
   "train_metrics": {
-    "mae": 1.0797037238252247,
-    "rmse": 1.567092589400591,
-    "mape_pct": 1.5152027082387889,
-    "r2": 0.9963583490886734
+    "mae": 1.0797064307550504,
+    "rmse": 1.5666956207827276,
+    "mape_pct": 1.515344915341884,
+    "r2": 0.9963601938271908
   },
   "test_metrics": {
-    "mae": 1.118384548005314,
-    "rmse": 1.5158965359759458,
-    "mape_pct": 1.463229095514655,
-    "r2": 0.9668867637540156
+    "rmse": 1.5187,
+    "mae": 1.121,
+    "r2": 0.966766,
+    "mape_pct": 1.4666
   },
   "baseline_previous_price_metrics": {
     "mae": 1.112567882773317,

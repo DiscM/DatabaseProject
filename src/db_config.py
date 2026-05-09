@@ -14,7 +14,11 @@ class MySQLConfig:
     database: str
 
 
-def load_dotenv(path: Path = Path(".env")) -> None:
+def load_dotenv(path: Path | None = None) -> None:
+    if path is None:
+        # Resolve relative to the project root (parent of src/) so this works
+        # regardless of the caller's working directory.
+        path = Path(__file__).resolve().parent.parent / ".env"
     if not path.exists():
         return
     for raw_line in path.read_text(encoding="utf-8").splitlines():

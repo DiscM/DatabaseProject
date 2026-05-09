@@ -13,6 +13,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 
+# Raw columns read directly from the market CSV
 FEATURE_COLUMNS = [
     "brent_price_usd",
     "wti_price_usd",
@@ -36,15 +37,35 @@ FEATURE_COLUMNS = [
     "event_flag",
 ]
 
+# Names for the computed features appended after the raw columns
+COMPUTED_FEATURE_NAMES = [
+    "brent_momentum_7d",   # absolute 7-day price change
+    "brent_accel",         # recent vs week-ago momentum (direction signal)
+    "vol_regime",          # short/long vol ratio (volatility regime indicator)
+]
+
 
 def to_float(value: str | None) -> float | None:
     if value is None or value == "":
         return None
     try:
-        result = float(value)
+        return float(value)
     except ValueError:
         return None
-    return result
+
+
+def compute_derived(vals: dict[str, float | None]) -> list[float | None]:
+    p   = vals.get("brent_price_usd")
+    l1  = vals.get("brent_lag_1")
+    l7  = vals.get("brent_lag_7")
+    v7  = vals.get("brent_volatility_7d")
+    v30 = vals.get("brent_volatility_30d")
+
+    momentum_7d = (p - l7)   if p  is not None and l7  is not None else None
+    accel       = (l1 - l7)  if l1 is not None and l7  is not None else None
+    vol_regime  = (v7 / v30) if v7 is not None and v30 is not None and v30 != 0.0 else None
+
+    return [momentum_7d, accel, vol_regime]
 
 
 def read_market_rows(path: Path) -> list[dict[str, str]]:
@@ -54,7 +75,7 @@ def read_market_rows(path: Path) -> list[dict[str, str]]:
 
 
 def build_examples(
-    rows: list[dict[str, str]], horizon: int = 10
+    rows: list[dict[str, str]], horizon: int = 1
 ) -> tuple[list[list[float]], list[float], list[str]]:
     """Build feature/label pairs where the target is `horizon` trading days ahead."""
     x_rows: list[list[float]] = []
@@ -62,35 +83,34 @@ def build_examples(
     dates: list[str] = []
     for idx, row in enumerate(rows[: len(rows) - horizon]):
         future_brent = to_float(rows[idx + horizon].get("brent_price_usd"))
-        features = [to_float(row.get(column)) for column in FEATURE_COLUMNS]
-        if future_brent is None or any(value is None for value in features):
+        raw_vals = {col: to_float(row.get(col)) for col in FEATURE_COLUMNS}
+        raw_features = [raw_vals[col] for col in FEATURE_COLUMNS]
+        computed = compute_derived(raw_vals)
+        all_features = raw_features + computed
+        if future_brent is None or any(v is None for v in all_features):
             continue
-        x_rows.append([float(value) for value in features])
+        x_rows.append([float(v) for v in all_features])
         y_rows.append(future_brent)
         dates.append(rows[idx + horizon]["market_date"])
     return x_rows, y_rows, dates
 
 
 def split_chronological(
-    x_rows: list[list[float]], y_rows: list[float], dates: list[str], test_ratio: float
-) -> tuple[list[list[float]], list[float], list[str], list[list[float]], list[float], list[str]]:
+    x_rows, y_rows, dates, test_ratio
+):
     split_index = max(1, int(len(x_rows) * (1.0 - test_ratio)))
     return (
-        x_rows[:split_index],
-        y_rows[:split_index],
-        dates[:split_index],
-        x_rows[split_index:],
-        y_rows[split_index:],
-        dates[split_index:],
+        x_rows[:split_index], y_rows[:split_index], dates[:split_index],
+        x_rows[split_index:], y_rows[split_index:], dates[split_index:],
     )
 
 
 def metrics(actual: list[float], predicted: list[float]) -> dict[str, float]:
     return {
-        "mae": mean_absolute_error(actual, predicted),
-        "rmse": mean_squared_error(actual, predicted) ** 0.5,
+        "mae":      mean_absolute_error(actual, predicted),
+        "rmse":     mean_squared_error(actual, predicted) ** 0.5,
         "mape_pct": mean_absolute_percentage_error(actual, predicted) * 100,
-        "r2": r2_score(actual, predicted),
+        "r2":       r2_score(actual, predicted),
     }
 
 
@@ -100,86 +120,134 @@ def write_predictions(
     actual: list[float],
     predicted: list[float],
     baseline: list[float],
-    horizon: int = 10,
+    horizon: int = 1,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["market_date", "actual_brent_future", "predicted_brent_future", "baseline_previous_brent", "horizon_days"])
+        writer.writerow(["market_date", "actual_brent_future", "predicted_brent_future",
+                         "baseline_previous_brent", "horizon_days"])
         for d, a, p, b in zip(dates, actual, predicted, baseline):
             writer.writerow([d, a, p, b, horizon])
 
 
-
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Train a Brent price model for a configurable horizon ahead.")
-    parser.add_argument("--market-csv", type=Path, default=Path("datasets") / "ops_market_daily.csv")
-    parser.add_argument("--output-dir", type=Path, default=Path("model_artifacts"))
-    parser.add_argument("--test-ratio", type=float, default=0.2)
-    parser.add_argument("--alpha", type=float, default=0.1)
-    parser.add_argument(
-        "--horizon",
-        type=int,
-        default=10,
-        help="Number of trading days ahead to predict (default: 10 ≈ 2 calendar weeks).",
+    parser = argparse.ArgumentParser(
+        description="Train one Ridge model per forecast horizon (direct multi-step strategy)."
     )
+    parser.add_argument("--market-csv",   type=Path,  default=Path("datasets") / "ops_market_daily.csv")
+    parser.add_argument("--output-dir",   type=Path,  default=Path("model_artifacts"))
+    parser.add_argument("--test-ratio",   type=float, default=0.2)
+    parser.add_argument("--alpha",        type=float, default=0.1,
+                        help="Ridge regularization strength (default: 0.1).")
+    parser.add_argument("--max-horizon",  type=int,   default=10,
+                        help="Number of horizon models to train, 1 through N (default: 10).")
     args = parser.parse_args()
 
     rows = read_market_rows(args.market_csv)
-    x_rows, y_rows, dates = build_examples(rows, horizon=args.horizon)
-    if len(x_rows) < 100:
-        raise SystemExit("Not enough model-ready rows to train.")
-
-    train_x, train_y, train_dates, test_x, test_y, test_dates = split_chronological(
-        x_rows, y_rows, dates, args.test_ratio
-    )
-    model = Pipeline(
-        steps=[
-            ("scaler", StandardScaler()),
-            ("regressor", Ridge(alpha=args.alpha)),
-        ]
-    )
-    model.fit(train_x, train_y)
-
-    test_predictions = model.predict(test_x).tolist()
-    train_predictions = model.predict(train_x).tolist()
-    baseline = [row[0] for row in test_x]
-
-    train_metrics = metrics(train_y, train_predictions)
-    test_metrics = metrics(test_y, test_predictions)
-    baseline_metrics = metrics(test_y, baseline)
-
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    model_path = args.output_dir / "oil_price_model.joblib"
-    joblib.dump(model, model_path)
-    artifact = {
-        "model_type": "sklearn.pipeline.Pipeline(StandardScaler, Ridge)",
-        "target": f"{args.horizon}_trading_day_ahead_brent_price_usd",
-        "horizon_trading_days": args.horizon,
-        "trained_at": date.today().isoformat(),
-        "source_file": str(args.market_csv),
-        "feature_columns": FEATURE_COLUMNS,
-        "model_file": str(model_path),
-        "alpha": args.alpha,
-        "train_rows": len(train_x),
-        "test_rows": len(test_x),
-        "train_date_range": [train_dates[0], train_dates[-1]],
-        "test_date_range": [test_dates[0], test_dates[-1]],
-        "train_metrics": train_metrics,
-        "test_metrics": test_metrics,
-        "baseline_previous_price_metrics": baseline_metrics,
-    }
-    (args.output_dir / "oil_price_model.json").write_text(json.dumps(artifact, indent=2), encoding="utf-8")
-    write_predictions(args.output_dir / "test_predictions.csv", test_dates, test_y, test_predictions, baseline, horizon=args.horizon)
 
-    print(f"scikit-learn model trained: {args.horizon}-trading-day-ahead Brent price (~2 calendar weeks)")
-    print(f"Rows: train={len(train_x)} test={len(test_x)}")
-    print(f"Test RMSE: {test_metrics['rmse']:.3f} USD")
-    print(f"Test MAE:  {test_metrics['mae']:.3f} USD")
-    print(f"Baseline RMSE: {baseline_metrics['rmse']:.3f} USD")
-    print(f"Saved: {model_path}")
-    print(f"Saved: {args.output_dir / 'oil_price_model.json'}")
-    print(f"Saved: {args.output_dir / 'test_predictions.csv'}")
+    per_horizon: dict[int, dict] = {}
+    # Capture h=1 artifacts for test_predictions.csv + backward-compat model
+    h1_test_dates = h1_test_y = h1_test_preds = h1_baseline = None
+    h1_train_metrics = h1_baseline_metrics = None
+
+    print(f"Training {args.max_horizon} direct-horizon Ridge models "
+          f"(alpha={args.alpha})  ...")
+
+    for h in range(1, args.max_horizon + 1):
+        x_rows, y_rows, dates = build_examples(rows, horizon=h)
+        if len(x_rows) < 50:
+            print(f"  h={h:02d}: not enough rows ({len(x_rows)}), skipping")
+            continue
+
+        train_x, train_y, train_dates, test_x, test_y, test_dates = split_chronological(
+            x_rows, y_rows, dates, args.test_ratio
+        )
+
+        model = Pipeline([
+            ("scaler",    StandardScaler()),
+            ("regressor", Ridge(alpha=args.alpha)),
+        ])
+        model.fit(train_x, train_y)
+
+        test_preds  = model.predict(test_x).tolist()
+        train_preds = model.predict(train_x).tolist()
+        m_test  = metrics(test_y,  test_preds)
+        m_train = metrics(train_y, train_preds)
+
+        model_file = args.output_dir / f"oil_price_model_h{h}.joblib"
+        joblib.dump(model, model_file)
+        model_file_rel = model_file.relative_to(Path.cwd()) if model_file.is_absolute() else model_file
+
+        per_horizon[h] = {
+            "model_file":      str(model_file_rel),
+            "rmse":            round(m_test["rmse"],     4),
+            "mae":             round(m_test["mae"],      4),
+            "r2":              round(m_test["r2"],       6),
+            "mape_pct":        round(m_test["mape_pct"], 4),
+            "train_rows":      len(train_x),
+            "test_rows":       len(test_x),
+            "test_date_range": [test_dates[0], test_dates[-1]],
+        }
+
+        if h == 1:
+            # Primary model (backward compat for anything that loads oil_price_model.joblib)
+            joblib.dump(model, args.output_dir / "oil_price_model.joblib")
+            h1_test_dates    = test_dates
+            h1_test_y        = test_y
+            h1_test_preds    = test_preds
+            h1_baseline      = [row[0] for row in test_x]
+            h1_train_metrics = m_train
+            h1_baseline_metrics = metrics(test_y, h1_baseline)
+
+        print(f"  h={h:02d}: RMSE={m_test['rmse']:.3f} USD  "
+              f"MAE={m_test['mae']:.3f} USD  R²={m_test['r2']:.4f}")
+
+    if not per_horizon:
+        raise SystemExit("No horizon models trained — check dataset size.")
+
+    # Write test_predictions.csv (h=1, for the visualization scatter / line chart)
+    write_predictions(
+        args.output_dir / "test_predictions.csv",
+        h1_test_dates, h1_test_y, h1_test_preds, h1_baseline, horizon=1,
+    )
+
+    # Write model metadata JSON
+    # Store portable relative paths so the JSON works on any machine
+    _rel = lambda p: str(p.relative_to(Path.cwd()) if p.is_absolute() else p)
+    artifact = {
+        "model_type":              "sklearn.pipeline.Pipeline(StandardScaler, Ridge)",
+        "strategy":                "direct_multi_step",
+        "max_horizon_trading_days": args.max_horizon,
+        "horizon_trading_days":    1,            # kept for backward compat
+        "trained_at":              date.today().isoformat(),
+        "source_file":             _rel(args.market_csv),
+        "feature_columns":         FEATURE_COLUMNS,
+        "computed_feature_names":  COMPUTED_FEATURE_NAMES,
+        "model_file":              _rel(args.output_dir / "oil_price_model.joblib"),
+        "alpha":                   args.alpha,
+        "per_horizon":             per_horizon,
+        # h=1 summary fields kept for backward compat
+        "train_rows":              per_horizon[1]["train_rows"],
+        "test_rows":               per_horizon[1]["test_rows"],
+        "train_date_range":        [h1_test_dates[0], h1_test_dates[-1]],
+        "test_date_range":         per_horizon[1]["test_date_range"],
+        "train_metrics":           h1_train_metrics,
+        "test_metrics":            {k: v for k, v in per_horizon[1].items()
+                                    if k in ("rmse", "mae", "r2", "mape_pct")},
+        "baseline_previous_price_metrics": h1_baseline_metrics,
+    }
+    (args.output_dir / "oil_price_model.json").write_text(
+        json.dumps(artifact, indent=2), encoding="utf-8"
+    )
+
+    print(f"\nSaved {len(per_horizon)} models to {args.output_dir}/")
+    print(f"h=1  test RMSE : {per_horizon[1]['rmse']:.3f} USD   R2: {per_horizon[1]['r2']:.4f}")
+    if args.max_horizon in per_horizon:
+        print(f"h={args.max_horizon:02d} test RMSE : "
+              f"{per_horizon[args.max_horizon]['rmse']:.3f} USD   "
+              f"R2: {per_horizon[args.max_horizon]['r2']:.4f}")
 
 
 if __name__ == "__main__":

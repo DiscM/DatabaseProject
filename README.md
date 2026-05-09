@@ -1,6 +1,8 @@
 # Semantic News and Oil Price Database Project
 
-This project compiles the workspace datasets into a MySQL database and trains a scikit-learn predictive model for next trading-day Brent crude oil prices.
+This project compiles workspace datasets into a MySQL database and trains a
+scikit-learn predictive model for Brent crude oil prices, including a
+Monte Carlo stochastic 10-day forward forecast with momentum blending.
 
 For the shortest setup path, start with [QUICKSTART.md](QUICKSTART.md).
 
@@ -55,67 +57,71 @@ After loading the CSV tables, `src/load_mysql.py` applies `sql/analytics_views.s
 ## Project Layout
 
 ```text
-datasets/                  Source CSV files supplied in the workspace
-docs/database_schema.md     Full column-level operational and dimensional ERDs
-sql/analytics_views.sql    MySQL views for analysis-ready joins
+main.py                    One-command pipeline runner (no MySQL required)
+main_with_db.py            One-command pipeline runner WITH MySQL integration
+src/db_config.py           MySQL connection config (reads .env)
 src/load_mysql.py          CSV-to-MySQL loader with inferred table schemas
-src/train_oil_model.py     scikit-learn Ridge regression training pipeline
-src/predict_oil_price.py   Uses the saved model to predict from the latest row
-model_artifacts/           Trained model JSON and test predictions
+src/train_oil_model.py     Ridge regression training (10 horizons, h=1..10)
+src/predict_oil_price.py   Monte Carlo stochastic 10-day forecast
+Visualization/
+  visualize_predictions.py Interactive Plotly charts (scatter + forecast fan)
+compile_notebook.py        Regenerates oil_news_project_demo.ipynb from sources
+datasets/                  Source CSV files
+docs/database_schema.md    Full column-level operational and dimensional ERDs
+sql/analytics_views.sql    MySQL views for analysis-ready joins
+model_artifacts/           Trained models, test predictions, forecast CSV
 reports/                   Markdown project report
 output/pdf/                Exported PDF report
-docker-compose.yml         Optional local MySQL 8.4 service
+docker-compose.yml         Local MySQL 8.4 service
 ```
 
-## 1. Start MySQL
+## Quick Run (No MySQL)
 
-Option A: use the included Docker service.
+Run the full train → predict → visualize pipeline from a single command:
+
+```powershell
+python main.py
+```
+
+This trains the model, generates a Monte Carlo forecast, and opens two
+interactive Plotly charts in the browser. MySQL is **not** required.
+
+## Quick Run (With MySQL)
+
+Start the Docker container, then run the full pipeline including CSV import:
 
 ```powershell
 docker compose up -d
+python main_with_db.py
 ```
 
-The Docker service starts the MySQL server only. It does not automatically create the project tables or load the CSV datasets. After MySQL is running, use the loader in step 3 to create the schema, import the datasets, and apply the analysis views.
+`main_with_db.py` automatically waits for MySQL to finish initialising before
+proceeding — no manual sleep or retry is needed.
 
-Option B: use an existing MySQL instance and create `.env` from the example.
+## Manual Step-by-Step
 
-```powershell
-Copy-Item .env.example .env
-```
-
-Then edit `.env` with your MySQL credentials.
-
-## 2. Install Dependencies
-
-The project uses scikit-learn for modeling and `mysql-connector-python` for loading CSV files into MySQL.
+### 1. Install Dependencies
 
 ```powershell
 python -m pip install -r requirements.txt
 ```
 
-## 3. Load the Datasets into MySQL
+### 2. Start MySQL (optional — skip if not using the database)
+
+```powershell
+docker compose up -d
+```
+
+### 3. Load Datasets into MySQL
 
 ```powershell
 python src\load_mysql.py --replace
 ```
 
-Run this after the Docker MySQL container is running, or after your existing MySQL server is configured in `.env`.
+The loader creates the database, one table per CSV, infers column types from
+`datasets/data_dictionary.csv`, and applies `sql/analytics_views.sql`.
 
-The loader:
-
-- Creates the configured database if needed
-- Creates one MySQL table per CSV file
-- Infers column types from `datasets/data_dictionary.csv`
-- Loads all rows in batches
-- Applies analysis views from `sql/analytics_views.sql`
-
-Useful views:
-
-- `vw_daily_oil_news_features`: daily joined oil, market, event, and GPR features
-- `vw_event_price_reaction`: event dates with same-day oil market indicators
-- `vw_country_petrol_impact`: country-level exposure, price snapshots, and impact labels
-
-Example query:
+Example query after loading:
 
 ```sql
 SELECT market_date, brent_price_usd, gpr_index, event_type, event_severity
@@ -125,43 +131,67 @@ ORDER BY market_date DESC
 LIMIT 20;
 ```
 
-## 4. Train the Predictive Oil Model
+### 4. Train the Model
 
 ```powershell
 python src\train_oil_model.py
 ```
 
-The model predicts next trading-day Brent price using current Brent/WTI prices, dollar index, volatility index, GPR/news features, lagged prices, volatility features, and event indicators from `ops_market_daily.csv`.
+Trains one `StandardScaler → Ridge` model per horizon (h=1 through h=10).
+Each model predicts directly N days ahead from today's real data (direct
+multi-step strategy — no iterative error accumulation).
 
-The training script fits this scikit-learn pipeline:
+Artifacts saved to `model_artifacts/`:
 
-```text
-StandardScaler -> Ridge Regression
-```
+- `oil_price_model.joblib` (h=1, primary)
+- `oil_price_model_h{N}.joblib` for N = 2..10
+- `oil_price_model.json` (metrics + per-horizon RMSE)
+- `test_predictions.csv`
 
-Current run:
+Current benchmark (h=1):
 
-- Training rows: 3,236
-- Test rows: 810
-- Chronological split, no random shuffle
-- Test RMSE: 1.516 USD
-- Test MAE: 1.118 USD
-- Previous-price baseline RMSE: 1.536 USD
+| Metric | Model | Baseline (naive persistence) |
+|--------|-------|------------------------------|
+| RMSE   | 1.52 USD | 1.54 USD |
+| MAE    | 1.12 USD | 1.11 USD |
+| R²     | 0.967 | — |
 
-Artifacts:
-
-- `model_artifacts/oil_price_model.joblib`
-- `model_artifacts/oil_price_model.json`
-- `model_artifacts/test_predictions.csv`
-
-## 5. Predict from the Latest Market Row
+### 5. Generate the Forecast
 
 ```powershell
 python src\predict_oil_price.py
 ```
 
-Latest bundled input row:
+Runs 500 Monte Carlo simulation paths with Gaussian noise (sigma = h=1 RMSE)
+injected at each step. A linear momentum blend (40% weight over the last 10
+trading days) corrects for Ridge's mean-reversion bias.
 
-- Market date: 2026-03-12
-- Current Brent: 95.76 USD
-- Predicted next trading-day Brent: 95.90 USD
+Output: `model_artifacts/forward_forecast.csv` — median + P10/P25/P75/P90
+for each of the next 10 trading days.
+
+CLI options:
+
+```powershell
+python src\predict_oil_price.py --n-sims 1000 --momentum-blend 0.5 --momentum-window 5
+```
+
+### 6. Visualize
+
+```powershell
+python Visualization\visualize_predictions.py
+```
+
+Opens two interactive Plotly charts in the browser:
+
+1. **Prediction accuracy scatter** — actual vs predicted on the test set
+2. **Model vs Baseline vs Actual** — time-series with the 10-day Monte Carlo
+   probability fan (P10–P90 bands) bridged from the last real data point
+
+### 7. Regenerate the Demo Notebook
+
+```powershell
+python compile_notebook.py
+```
+
+Rebuilds `oil_news_project_demo.ipynb` by reading the current source files
+verbatim. Open and run it top-to-bottom in Jupyter for an end-to-end demo.
