@@ -46,26 +46,28 @@ def main():
     cells.append(create_code_cell(train_model_code))
     cells.append(create_code_cell("# Run the training process\nmain()"))
     
-    # 5. Predict Price
+    # 5. Predict Price (Forward Forecast)
     predict_code = Path("src/predict_oil_price.py").read_text(encoding="utf-8")
     predict_code = predict_code.replace("parser.parse_args()", "parser.parse_args([])")
-    cells.append(create_markdown_cell("## 4. Predict Next Trading-Day Price\nPredict the oil price based on the latest data."))
+    cells.append(create_markdown_cell("## 4. Forward Price Forecast\nGenerate a multi-day forward forecast of Brent crude oil prices."))
     cells.append(create_code_cell(predict_code))
-    cells.append(create_code_cell("# Run the prediction\nmain()"))
+    cells.append(create_code_cell("# Run the forecast\nmain()"))
     
     # 6. Visualizations
     viz_code = Path("Visualization/visualize_predictions.py").read_text(encoding="utf-8")
     # We remove the if __name__ == "__main__": block and provide custom code
     viz_main_custom = """
 predictions_file = os.path.join('model_artifacts', 'test_predictions.csv')
+forecast_file = os.path.join('model_artifacts', 'forward_forecast.csv')
+market_file = os.path.join('datasets', 'ops_market_daily.csv')
 # Make visualizations display inline instead of saving, or just let them save
 %matplotlib inline
-create_visualizations(predictions_file, 'Visualization')
+create_visualizations(predictions_file, 'Visualization', forecast_file, market_file)
 """
     # Just grab everything before the __main__ block
     viz_code = viz_code.split('if __name__ == "__main__":')[0]
     
-    cells.append(create_markdown_cell("## 5. Visualizations\nFinally, generate visualizations of the model predictions vs actual prices."))
+    cells.append(create_markdown_cell("## 5. Visualizations\nGenerate visualizations of model predictions vs actual prices, including the forward forecast."))
     cells.append(create_code_cell(viz_code + viz_main_custom))
 
     notebook = {

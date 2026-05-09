@@ -53,18 +53,21 @@ def read_market_rows(path: Path) -> list[dict[str, str]]:
     return sorted(rows, key=lambda row: row["market_date"])
 
 
-def build_examples(rows: list[dict[str, str]]) -> tuple[list[list[float]], list[float], list[str]]:
+def build_examples(
+    rows: list[dict[str, str]], horizon: int = 10
+) -> tuple[list[list[float]], list[float], list[str]]:
+    """Build feature/label pairs where the target is `horizon` trading days ahead."""
     x_rows: list[list[float]] = []
     y_rows: list[float] = []
     dates: list[str] = []
-    for idx, row in enumerate(rows[:-1]):
-        next_brent = to_float(rows[idx + 1].get("brent_price_usd"))
+    for idx, row in enumerate(rows[: len(rows) - horizon]):
+        future_brent = to_float(rows[idx + horizon].get("brent_price_usd"))
         features = [to_float(row.get(column)) for column in FEATURE_COLUMNS]
-        if next_brent is None or any(value is None for value in features):
+        if future_brent is None or any(value is None for value in features):
             continue
         x_rows.append([float(value) for value in features])
-        y_rows.append(next_brent)
-        dates.append(rows[idx + 1]["market_date"])
+        y_rows.append(future_brent)
+        dates.append(rows[idx + horizon]["market_date"])
     return x_rows, y_rows, dates
 
 
@@ -91,25 +94,39 @@ def metrics(actual: list[float], predicted: list[float]) -> dict[str, float]:
     }
 
 
-def write_predictions(path: Path, dates: list[str], actual: list[float], predicted: list[float], baseline: list[float]) -> None:
+def write_predictions(
+    path: Path,
+    dates: list[str],
+    actual: list[float],
+    predicted: list[float],
+    baseline: list[float],
+    horizon: int = 10,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["market_date", "actual_brent_next", "predicted_brent_next", "baseline_previous_brent"])
-        for row in zip(dates, actual, predicted, baseline):
-            writer.writerow(row)
+        writer.writerow(["market_date", "actual_brent_future", "predicted_brent_future", "baseline_previous_brent", "horizon_days"])
+        for d, a, p, b in zip(dates, actual, predicted, baseline):
+            writer.writerow([d, a, p, b, horizon])
+
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Train a next-trading-day Brent price model.")
+    parser = argparse.ArgumentParser(description="Train a Brent price model for a configurable horizon ahead.")
     parser.add_argument("--market-csv", type=Path, default=Path("datasets") / "ops_market_daily.csv")
     parser.add_argument("--output-dir", type=Path, default=Path("model_artifacts"))
     parser.add_argument("--test-ratio", type=float, default=0.2)
     parser.add_argument("--alpha", type=float, default=0.1)
+    parser.add_argument(
+        "--horizon",
+        type=int,
+        default=10,
+        help="Number of trading days ahead to predict (default: 10 ≈ 2 calendar weeks).",
+    )
     args = parser.parse_args()
 
     rows = read_market_rows(args.market_csv)
-    x_rows, y_rows, dates = build_examples(rows)
+    x_rows, y_rows, dates = build_examples(rows, horizon=args.horizon)
     if len(x_rows) < 100:
         raise SystemExit("Not enough model-ready rows to train.")
 
@@ -137,7 +154,8 @@ def main() -> None:
     joblib.dump(model, model_path)
     artifact = {
         "model_type": "sklearn.pipeline.Pipeline(StandardScaler, Ridge)",
-        "target": "next_trading_day_brent_price_usd",
+        "target": f"{args.horizon}_trading_day_ahead_brent_price_usd",
+        "horizon_trading_days": args.horizon,
         "trained_at": date.today().isoformat(),
         "source_file": str(args.market_csv),
         "feature_columns": FEATURE_COLUMNS,
@@ -152,9 +170,9 @@ def main() -> None:
         "baseline_previous_price_metrics": baseline_metrics,
     }
     (args.output_dir / "oil_price_model.json").write_text(json.dumps(artifact, indent=2), encoding="utf-8")
-    write_predictions(args.output_dir / "test_predictions.csv", test_dates, test_y, test_predictions, baseline)
+    write_predictions(args.output_dir / "test_predictions.csv", test_dates, test_y, test_predictions, baseline, horizon=args.horizon)
 
-    print("scikit-learn model trained: next trading-day Brent price")
+    print(f"scikit-learn model trained: {args.horizon}-trading-day-ahead Brent price (~2 calendar weeks)")
     print(f"Rows: train={len(train_x)} test={len(test_x)}")
     print(f"Test RMSE: {test_metrics['rmse']:.3f} USD")
     print(f"Test MAE:  {test_metrics['mae']:.3f} USD")
