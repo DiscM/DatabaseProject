@@ -1,8 +1,14 @@
 # Semantic News and Oil Price Database Project
 
-This project compiles workspace datasets into a MySQL database and trains a
-scikit-learn predictive model for Brent crude oil prices, including a
-Monte Carlo stochastic 10-day forward forecast with momentum blending.
+This project turns a collection of oil-market, geopolitical risk, semantic
+news, and country exposure CSV files into a reproducible analytics workflow.
+It supports two complementary paths: a MySQL-backed database layer with
+operational tables, dimensional tables, and reusable SQL views, and a
+time-series modeling layer that trains a transparent `StandardScaler -> Ridge`
+pipeline to predict next-trading-day Brent crude prices and produces a 10-day
+Monte Carlo forecast.
+
+Project repository: [github.com/DiscM/DatabaseProject](https://github.com/DiscM/DatabaseProject)
 
 For the shortest setup path, start with [QUICKSTART.md](QUICKSTART.md).
 
@@ -61,7 +67,7 @@ main.py                    One-command pipeline runner (no MySQL required)
 main_with_db.py            One-command pipeline runner WITH MySQL integration
 src/db_config.py           MySQL connection config (reads .env)
 src/load_mysql.py          CSV-to-MySQL loader with inferred table schemas
-src/train_oil_model.py     Ridge regression training (10 horizons, h=1..10)
+src/train_oil_model.py     Ridge training (10 horizons, h=1..10)
 src/predict_oil_price.py   Monte Carlo stochastic 10-day forecast
 Visualization/
   visualize_predictions.py Interactive Plotly charts (scatter + forecast fan)
@@ -77,7 +83,7 @@ docker-compose.yml         Local MySQL 8.4 service
 
 ## Quick Run (No MySQL)
 
-Run the full train → predict → visualize pipeline from a single command:
+Run the full train -> predict -> visualize pipeline from a single command:
 
 ```powershell
 python main.py
@@ -95,8 +101,7 @@ docker compose up -d
 python main_with_db.py
 ```
 
-`main_with_db.py` automatically waits for MySQL to finish initialising before
-proceeding — no manual sleep or retry is needed.
+`main_with_db.py` automatically waits for MySQL to finish initialising before proceeding - no manual sleep or retry is needed.
 
 ## Manual Step-by-Step
 
@@ -106,7 +111,7 @@ proceeding — no manual sleep or retry is needed.
 python -m pip install -r requirements.txt
 ```
 
-### 2. Start MySQL (optional — skip if not using the database)
+### 2. Start MySQL (optional - skip if not using the database)
 
 ```powershell
 docker compose up -d
@@ -137,9 +142,9 @@ LIMIT 20;
 python src\train_oil_model.py
 ```
 
-Trains one `StandardScaler → Ridge` model per horizon (h=1 through h=10).
-Each model predicts directly N days ahead from today's real data (direct
-multi-step strategy — no iterative error accumulation).
+Trains one `StandardScaler -> Ridge` model per horizon (h=1 through h=10).
+Each model predicts directly N days ahead from today's real data with a direct
+multi-step strategy, so there is no iterative error accumulation.
 
 Artifacts saved to `model_artifacts/`:
 
@@ -150,11 +155,12 @@ Artifacts saved to `model_artifacts/`:
 
 Current benchmark (h=1):
 
-| Metric | Model | Baseline (naive persistence) |
-|--------|-------|------------------------------|
-| RMSE   | 1.52 USD | 1.54 USD |
-| MAE    | 1.12 USD | 1.11 USD |
-| R²     | 0.967 | — |
+| Metric | Training | Test | Previous-price baseline |
+|--------|----------|------|-------------------------|
+| MAE    | 1.080 USD | 1.118 USD | 1.113 USD |
+| RMSE   | 1.567 USD | 1.516 USD | 1.536 USD |
+| MAPE   | 1.515% | 1.463% | 1.457% |
+| R-squared | 0.996 | 0.967 | 0.966 |
 
 ### 5. Generate the Forecast
 
@@ -163,10 +169,10 @@ python src\predict_oil_price.py
 ```
 
 Runs 500 Monte Carlo simulation paths with Gaussian noise (sigma = h=1 RMSE)
-injected at each step. A linear momentum blend (40% weight over the last 10
-trading days) corrects for Ridge's mean-reversion bias.
+injected at each step. A linear momentum blend over the last 10 trading days
+corrects for the model's mean-reversion bias.
 
-Output: `model_artifacts/forward_forecast.csv` — median + P10/P25/P75/P90
+Output: `model_artifacts/forward_forecast.csv` - median + P10/P25/P75/P90
 for each of the next 10 trading days.
 
 CLI options:
@@ -174,7 +180,6 @@ CLI options:
 ```powershell
 python src\predict_oil_price.py --n-sims 1000 --momentum-blend 0.5 --momentum-window 5
 ```
-
 ### 6. Visualize
 
 ```powershell
@@ -183,9 +188,9 @@ python Visualization\visualize_predictions.py
 
 Opens two interactive Plotly charts in the browser:
 
-1. **Prediction accuracy scatter** — actual vs predicted on the test set
-2. **Model vs Baseline vs Actual** — time-series with the 10-day Monte Carlo
-   probability fan (P10–P90 bands) bridged from the last real data point
+1. **Prediction accuracy scatter** - actual vs predicted on the test set
+2. **Model vs Baseline vs Actual** - time-series with the 10-day Monte Carlo
+   probability fan (P10-P90 bands) bridged from the last real data point
 
 ### 7. Regenerate the Demo Notebook
 
@@ -195,3 +200,7 @@ python compile_notebook.py
 
 Rebuilds `oil_news_project_demo.ipynb` by reading the current source files
 verbatim. Open and run it top-to-bottom in Jupyter for an end-to-end demo.
+
+
+
+

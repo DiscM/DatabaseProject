@@ -49,7 +49,7 @@ def text(c, value, x, y, size=18, color=INK, bold=False, max_width=None, leading
 def footer(c, page):
     c.setFillColor(MUTED)
     c.setFont("Helvetica", 8)
-    c.drawString(0.55 * inch, 0.28 * inch, "Semantic News and Oil Price Signals")
+    c.drawString(0.55 * inch, 0.28 * inch, "Semantic News and Oil Price Database Project")
     c.drawRightString(W - 0.55 * inch, 0.28 * inch, f"Slide {page}")
 
 
@@ -112,13 +112,13 @@ def build():
     c = canvas.Canvas(str(OUT), pagesize=PAGE)
 
     # 1
-    text(c, "Semantic News to Oil Price Signals", 0.8 * inch, H - 1.1 * inch, 38, INK, True, 7.2 * inch)
+    text(c, "Semantic News and Oil Price Database Project", 0.8 * inch, H - 1.1 * inch, 38, INK, True, 7.2 * inch)
     c.setStrokeColor(GOLD)
     c.setLineWidth(5)
     c.line(0.8 * inch, H - 2.05 * inch, 2.8 * inch, H - 2.05 * inch)
     text(
         c,
-        "A MySQL-backed analytics project joining geopolitical risk, oil prices, events, and country exposure into a reproducible scikit-learn workflow.",
+        "This project turns oil-market, geopolitical risk, semantic news, and country exposure CSV files into a reproducible analytics workflow with MySQL tables, SQL views, and a transparent pricing model.",
         0.8 * inch,
         H - 2.45 * inch,
         15,
@@ -139,7 +139,7 @@ def build():
         "Semantic news, prices, events, country impact",
         "Operational tables plus dim/fact reporting tables",
         "Daily oil/news features and event/country analysis",
-        "StandardScaler -> Ridge Regression",
+        "StandardScaler -> Ridge",
     ]
     x = 0.9 * inch
     for i, (label, detail) in enumerate(zip(labels, details), 1):

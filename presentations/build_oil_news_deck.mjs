@@ -131,13 +131,13 @@ addSlide(
     },
     [
       column({ width: fill, height: fill, gap: 26 }, [
-        text("Semantic News to Oil Price Signals", {
+        text("Semantic News and Oil Price Database Project", {
           width: wrap(920),
           height: hug,
           style: { fontSize: 78, bold: true, color: colors.ink },
         }),
         rule({ width: fixed(260), stroke: colors.gold, weight: 7 }),
-        text("A MySQL-backed analytics project joining geopolitical risk, oil prices, events, and country exposure into a reproducible scikit-learn workflow.", {
+        text("This project turns oil-market, geopolitical risk, semantic news, and country exposure CSV files into a reproducible analytics workflow with MySQL tables, SQL views, and a transparent pricing model.", {
           width: wrap(860),
           height: hug,
           style: { fontSize: 28, color: colors.muted },
@@ -166,7 +166,7 @@ addSlide(
       step(1, "Datasets", "Semantic news, market prices, events, country impact"),
       step(2, "MySQL", "Operational source tables plus dim/fact reporting tables"),
       step(3, "Views", "Daily oil/news features and event/country analysis"),
-      step(4, "Model", "StandardScaler -> Ridge Regression for next-day Brent"),
+      step(4, "Model", "StandardScaler -> Ridge for next-day Brent"),
     ]),
     text("Final handoff includes scripts, schema docs, trained model, report, PDF, and this deck.", {
       width: fill,

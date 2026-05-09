@@ -4,8 +4,8 @@ Editable source outline for the project presentation.
 
 ## Slide 1 - Cover
 
-**Title:** Semantic News to Oil Price Signals  
-**Message:** A MySQL-backed analytics project that joins geopolitical news risk, oil prices, events, and country exposure into a reproducible scikit-learn pricing workflow.  
+**Title:** Semantic News and Oil Price Database Project  
+**Message:** This project turns oil-market, geopolitical risk, semantic news, and country exposure CSV files into a reproducible analytics workflow with MySQL tables, SQL views, and a transparent pricing model.  
 **Proof points:** 4,047 daily market rows; 66,660 country-month GPR rows; MySQL, SQL views, scikit-learn.
 
 ## Slide 2 - What the Project Builds
@@ -34,12 +34,12 @@ Editable source outline for the project presentation.
 ## Slide 6 - Predictive Model
 
 **Title:** A transparent scikit-learn model predicts next-day Brent  
-**Message:** The model uses a chronological split and a `StandardScaler -> Ridge Regression` pipeline to predict next trading-day Brent price.
+**Message:** The model uses a chronological split and a `StandardScaler -> Ridge` pipeline to predict the next trading-day Brent crude price.
 
 ## Slide 7 - Model Features
 
 **Title:** Features combine prices, risk, volatility, and events  
-**Message:** Current Brent/WTI, macro indicators, GPR index, returns, lagged prices, volatility, spread, and event flags are used as model inputs.
+**Message:** The 20 core inputs include current Brent/WTI, macro indicators, GPR index, returns, lagged prices, volatility, spread, and event flags. The training scripts also derive Brent momentum, short-term acceleration, and a volatility regime ratio.
 
 ## Slide 8 - Model Results
 

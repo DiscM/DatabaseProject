@@ -1,47 +1,59 @@
-\documentclass[11pt]{article}
+\documentclass[conference]{IEEEtran}
 
-\usepackage[margin=1in]{geometry}
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
+\usepackage{cite}
+\usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{tabularx}
-\usepackage{hyperref}
 \usepackage{enumitem}
-\usepackage{titlesec}
+\usepackage{listings}
+\usepackage{xurl}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
 
 \title{Semantic News and Oil Price Database Project Report}
-\author{}
-\date{May 9, 2026}
+\author{\IEEEauthorblockN{Steven Anthony Salabao, Eliza Hall, and Xinghan Chen}}
 
 \setlist[itemize]{leftmargin=1.4em}
 \setlist[enumerate]{leftmargin=1.6em}
-\titleformat{\section}{\large\bfseries}{\thesection}{0.6em}{}
-\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.6em}{}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
-\newcommand{\tighttable}{\setlength{\tabcolsep}{11pt}\renewcommand{\arraystretch}{1.15}\small}
+\newcommand{\tighttable}{\setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{1.12}\footnotesize}
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  breakatwhitespace=true,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  frame=single,
+  framerule=0.2pt,
+  xleftmargin=0.5em,
+  xrightmargin=0.5em
+}
 
 \begin{document}
 \maketitle
 
-\noindent\textbf{Workspace:} \texttt{DatabaseProject} \\
-\textbf{Primary stack:} MySQL, pandas, scikit-learn, Plotly \\
-\textbf{Scope:} Database design, data loading, feature engineering, forecasting, and reporting
-
-\section*{Executive Summary}
-
-This project turns a collection of oil-market, geopolitical risk, semantic news, and country exposure CSV files into a reproducible analytics workflow. The codebase supports two complementary paths:
-
-\begin{enumerate}
-  \item A MySQL-backed database layer with operational tables, dimensional tables, and reusable SQL views.
-  \item A time-series modeling layer that trains a transparent \texttt{StandardScaler -> Ridge} pipeline to predict next-trading-day Brent crude prices and produces a 10-day Monte Carlo forecast.
-\end{enumerate}
+\begin{abstract}
+This project turns a collection of oil-market, geopolitical risk, semantic news, and country exposure CSV files into a reproducible analytics workflow. The codebase supports two complementary paths: a MySQL-backed database layer with operational tables, dimensional tables, and reusable SQL views, and a time-series modeling layer that trains a transparent \texttt{StandardScaler -> Ridge} pipeline to predict next-trading-day Brent crude prices and produces a 10-day Monte Carlo forecast.
 
 Validation in the local environment confirmed that the Python scripts compile, the model trains successfully, the forecast step runs end to end, and the visualization code builds the expected Plotly figures. The strongest one-day model result is a test RMSE of about \textbf{1.52 USD}, narrowly better than the previous-price baseline.
+\end{abstract}
+
+\begin{IEEEkeywords}
+MySQL, oil prices, geopolitical risk, time series forecasting, database design, semantic news
+\end{IEEEkeywords}
+
+\section{Project Overview}
 
 What makes the project useful is not just the model score, but the shape of the workflow. The database layer keeps the source data auditable and queryable, the modeling layer extracts a small but meaningful feature set from those tables, and the reporting layer packages the outputs into artifacts that are easy to present. That means the project is usable both as a demo and as a foundation for further iteration.
 
-\section*{Project Goals}
+\vspace{0.25em}
+\noindent\textit{Repository:} \url{https://github.com/DiscM/DatabaseProject}
+
+\section{Project Goals}
 
 \begin{itemize}
   \item Load the supplied CSV datasets into a MySQL database.
@@ -51,14 +63,15 @@ What makes the project useful is not just the model score, but the shape of the 
   \item Generate forecast artifacts and visualizations that can be reused in the presentation deck and notebook.
 \end{itemize}
 
-\section*{Data Foundation}
+\section{Data Foundation}
 
 The workspace includes 20 CSV files in \texttt{datasets/}, covering market prices, geopolitical risk, events, country impact, and warehouse-ready reporting tables.
 
-\begin{table}[h!]
+\begin{table*}[!t]
+\caption{Source datasets used by the project}
 \tighttable
 \centering
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.55cm}@{\hspace{1.1em}}r@{\hspace{1.1em}}Y@{}}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.45cm}@{\hspace{0.8em}}r@{\hspace{0.8em}}Y@{}}
 \toprule
 \textbf{Dataset} & \textbf{Rows} & \textbf{Purpose} \\
 \midrule
@@ -72,15 +85,15 @@ The workspace includes 20 CSV files in \texttt{datasets/}, covering market price
 \texttt{dim\_* / fact\_*} tables & mixed & Warehouse-ready reporting layer \\
 \bottomrule
 \end{tabularx}
-\end{table}
+\end{table*}
 
 The primary modeling table, \texttt{ops\_market\_daily.csv}, spans \textbf{2010-02-17 through 2026-03-12}. That gives the project a long enough time horizon for both model training and time-series evaluation.
 
-\section*{Database Design}
+\section{Database Design}
 
 The database is organized into two layers.
 
-\subsection*{Operational Layer}
+\subsection{Operational Layer}
 
 The operational layer preserves the source-style structure of the datasets. It is designed for traceability and for model feature engineering.
 
@@ -106,7 +119,7 @@ The operational layer preserves the source-style structure of the datasets. It i
   \item \texttt{ops\_countries.iso3 = ops\_gpr\_country\_monthly.iso3}
 \end{itemize}
 
-\subsection*{Dimensional Layer}
+\subsection{Dimensional Layer}
 
 The dimensional layer supports reporting and BI-style analysis.
 
@@ -130,14 +143,15 @@ This structure keeps the original data intact while making the reporting side cl
 
 The practical benefit is that the same data can be viewed in two ways. Analysts can work against the operational tables when they want source fidelity and flexible joins, while report authors can use the dimension and fact tables when they want stable keys and a more familiar warehouse-style layout. That separation makes the workspace easier to reason about than a single flattened table dump.
 
-\section*{SQL Views}
+\section{SQL Views}
 
 The loader applies \texttt{sql/analytics\_views.sql} after the CSV import. It creates three useful views:
 
-\begin{table}[h!]
+\begin{table*}[!t]
+\caption{SQL views created by the loader}
 \tighttable
 \centering
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.9cm}@{\hspace{1.1em}}Y@{}}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.7cm}@{\hspace{0.8em}}Y@{}}
 \toprule
 \textbf{View} & \textbf{Description} \\
 \midrule
@@ -146,18 +160,19 @@ The loader applies \texttt{sql/analytics\_views.sql} after the CSV import. It cr
 \texttt{vw\_country\_petrol\_impact} & Country exposure, petrol price snapshots, and vulnerability indicators \\
 \bottomrule
 \end{tabularx}
-\end{table}
+\end{table*}
 
 \textbf{Example query:}
-\begin{verbatim}
-SELECT market_date, brent_price_usd, gpr_index, event_type, event_severity
+\begin{lstlisting}
+SELECT market_date, brent_price_usd, gpr_index,
+       event_type, event_severity
 FROM vw_daily_oil_news_features
 WHERE event_flag = 1
 ORDER BY market_date DESC
 LIMIT 20;
-\end{verbatim}
+\end{lstlisting}
 
-\section*{Modeling Approach}
+\section{Modeling Approach}
 
 The predictive target is the \textbf{next trading-day Brent crude oil price in USD}.
 
@@ -173,14 +188,15 @@ That choice is appropriate for this project because it keeps the model easy to e
 
 This is intentionally not a black-box forecasting stack. The goal is to keep the signal interpretable: price history, lags, volatility, a broad risk index, and a small set of event features. In a project review, that is often more defensible than a more complex model that is harder to trace back to the underlying business question.
 
-\subsection*{Model Features}
+\subsection{Model Features}
 
 The model uses 20 core input features from \texttt{ops\_market\_daily.csv}:
 
-\begin{table}[h!]
+\begin{table*}[!t]
+\caption{Feature groups used in the forecasting model}
 \tighttable
 \centering
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.35cm}@{\hspace{1.1em}}Y@{}}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.25cm}@{\hspace{0.8em}}Y@{}}
 \toprule
 \textbf{Group} & \textbf{Columns} \\
 \midrule
@@ -194,7 +210,7 @@ Spread & \texttt{brent\_wti\_spread} \\
 Events & \texttt{event\_severity}, \texttt{event\_flag} \\
 \bottomrule
 \end{tabularx}
-\end{table}
+\end{table*}
 
 Two small derived features are also computed in the training and prediction scripts:
 
@@ -204,14 +220,15 @@ Two small derived features are also computed in the training and prediction scri
   \item Volatility regime ratio
 \end{itemize}
 
-\section*{Validated Results}
+\section{Validated Results}
 
 The current project artifacts report the following h=1 results:
 
-\begin{table}[h!]
+\begin{table*}[!t]
+\caption{h=1 model performance against baseline}
 \tighttable
 \centering
-\begin{tabularx}{\textwidth}{@{}l@{\hspace{1.1em}}r@{\hspace{1.1em}}r@{\hspace{1.1em}}r@{}}
+\begin{tabularx}{\textwidth}{@{}l@{\hspace{0.8em}}r@{\hspace{0.8em}}r@{\hspace{0.8em}}r@{}}
 \toprule
 \textbf{Metric} & \textbf{Training} & \textbf{Test} & \textbf{Previous-price baseline} \\
 \midrule
@@ -221,17 +238,17 @@ MAPE & 1.515\% & 1.463\% & 1.457\% \\
 R-squared & 0.996 & 0.967 & 0.966 \\
 \bottomrule
 \end{tabularx}
-\end{table}
+\end{table*}
 
 The improvement over the baseline is small, but that is a realistic outcome for next-day oil pricing. Yesterday's price is already a very strong predictor, so the real value of the model is the reproducible pipeline and the ability to incorporate market and risk context in a controlled way.
 
 The train/test split is chronological, which is important here because the data is a time series rather than an exchangeable sample. That means the model is evaluated the way it would actually be used: trained on the past and judged on the future. The reported metrics therefore reflect a more realistic deployment-style check than a shuffled split would.
 
-\subsection*{Horizon Results}
+\subsection{Horizon Results}
 
 The training script also fits direct multi-step models for horizons h=1 through h=10. In the local validation run, the longer-horizon models remained usable but naturally degraded as the forecast horizon increased. The h=10 model still achieved a meaningful fit, which supports the forecast fan produced by the Monte Carlo step.
 
-\section*{Forecasting}
+\section{Forecasting}
 
 \texttt{src/predict\_oil\_price.py} loads the trained h=1 model and generates a 10-day forward forecast.
 
@@ -245,7 +262,7 @@ The training script also fits direct multi-step models for horizons h=1 through 
 
 That makes the output more informative than a single point estimate and gives the visualization layer a proper forecast fan.
 
-\section*{Visualization}
+\section{Visualization}
 
 \texttt{Visualization/visualize\_predictions.py} generates two interactive Plotly figures:
 
@@ -258,7 +275,7 @@ The visualization step validated successfully in the local environment and produ
 
 Those charts are doing a useful job in the story of the project. The scatter plot shows whether the model tracks actual price levels at all, while the time-series plot shows how the model compares with the baseline and how uncertainty expands across the 10-day forecast window. That makes the outputs easier to interpret than a table of metrics alone.
 
-\section*{Validation Summary}
+\section{Validation Summary}
 
 The project was validated locally with the following checks:
 
@@ -271,7 +288,7 @@ The project was validated locally with the following checks:
   \item The core required feature columns are present in \texttt{ops\_market\_daily.csv}.
 \end{itemize}
 
-\section*{Notes and Risks}
+\section{Notes and Risks}
 
 Two implementation details are worth noting:
 
@@ -284,7 +301,7 @@ These are manageable issues, but they should be addressed before presenting the 
 
 Two additional practical notes are worth keeping in mind. First, the forecast artifact is written alongside the trained model, which keeps the handoff simple, but it also means the artifact directory becomes the canonical output location for both training and prediction. Second, the validation run confirmed that the core feature columns are present in the dataset, so the current pipeline is not depending on fragile ad hoc preprocessing to succeed.
 
-\section*{Conclusion}
+\section{Conclusion}
 
 This project is a solid end-to-end example of a database-driven analytics workflow. It preserves the source data in a structured MySQL schema, adds analysis-ready SQL views, trains a transparent predictive model, and exports forecast artifacts that can be visualized and presented. The forecasting gain over baseline is modest, but the architecture is strong: it is reproducible, inspectable, and ready for iterative improvement.
 

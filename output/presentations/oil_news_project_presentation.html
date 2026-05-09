@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Semantic News to Oil Price Signals</title>
+  <title>Semantic News and Oil Price Database Project</title>
   <style>
     :root {
       --ink: #10202e;
@@ -229,19 +229,24 @@
       cursor: text;
     }
     @page {
-      size: landscape;
+      size: 13.333in 7.5in;
       margin: 0;
     }
     @media print {
       html, body { height: auto; overflow: visible; }
       body { display: block; background: white; }
       nav, .toolbar { display: none; }
-      main { padding: 0; gap: 0; }
+      main {
+        padding: 0;
+        gap: 0;
+        height: auto;
+        overflow: visible;
+      }
       .slide {
         position: relative;
         inset: auto;
-        width: 100vw;
-        height: 100vh;
+        width: 13.333in;
+        height: 7.5in;
         box-shadow: none;
         border-radius: 0;
         opacity: 1;
@@ -421,6 +426,49 @@
         justify-content: space-between;
       }
     }
+    @media print {
+      html, body {
+        width: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+      body {
+        display: block !important;
+        background: white !important;
+      }
+      nav,
+      .toolbar {
+        display: none !important;
+      }
+      main {
+        position: static !important;
+        display: block !important;
+        width: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+        padding: 0 !important;
+      }
+      .slide {
+        position: relative !important;
+        inset: auto !important;
+        display: flex !important;
+        width: 13.333in !important;
+        height: 7.5in !important;
+        padding: 0.58in 0.7in !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: none !important;
+        page-break-after: always !important;
+        break-after: page !important;
+      }
+      .slide:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -448,9 +496,9 @@
 
     <section class="slide cover active" id="slide-1">
       <div>
-        <h2 contenteditable="true">Semantic News to Oil Price Signals</h2>
+        <h2 contenteditable="true">Semantic News and Oil Price Database Project</h2>
         <div class="rule"></div>
-        <p class="subtitle" contenteditable="true">A MySQL-backed analytics project joining geopolitical risk, oil prices, events, and country exposure into a reproducible scikit-learn workflow.</p>
+        <p class="subtitle" contenteditable="true">This project turns oil-market, geopolitical risk, semantic news, and country exposure CSV files into a reproducible analytics workflow with MySQL tables, SQL views, and a transparent pricing model.</p>
       </div>
       <div>
         <div class="metric"><strong contenteditable="true">4,047</strong><span>daily market rows</span></div>
@@ -468,7 +516,7 @@
         <div class="step"><div class="badge">1</div><div><h3 contenteditable="true">Datasets</h3><p contenteditable="true">Semantic news, market prices, events, country impact.</p></div></div>
         <div class="step"><div class="badge">2</div><div><h3 contenteditable="true">MySQL</h3><p contenteditable="true">Operational source tables plus dim/fact reporting tables.</p></div></div>
         <div class="step"><div class="badge">3</div><div><h3 contenteditable="true">Views</h3><p contenteditable="true">Daily oil/news features and event/country analysis.</p></div></div>
-        <div class="step"><div class="badge">4</div><div><h3 contenteditable="true">Model</h3><p contenteditable="true">StandardScaler -> Ridge Regression for next-day Brent.</p></div></div>
+        <div class="step"><div class="badge">4</div><div><h3 contenteditable="true">Model</h3><p contenteditable="true">StandardScaler -> Ridge for next-day Brent.</p></div></div>
       </div>
       <footer><span>Final handoff includes scripts, schema docs, model, report, PDF, and deck.</span><span>Slide 2</span></footer>
     </section>
@@ -491,7 +539,7 @@
           <p class="subtitle" contenteditable="true">The modeling table aligns Brent, WTI, volatility, GPR, event flags, and lag features for supervised learning.</p>
         </div>
       </div>
-      <footer><span>Semantic News and Oil Price Signals</span><span>Slide 3</span></footer>
+      <footer><span>Semantic News and Oil Price Database Project</span><span>Slide 3</span></footer>
     </section>
 
     <section class="slide" id="slide-4">
@@ -525,7 +573,7 @@
         <div><div class="metric"><strong>3,236</strong><span>training rows</span></div><div class="metric teal"><strong>810</strong><span>test rows</span></div><div class="metric gold"><strong>0.1</strong><span>Ridge alpha</span></div></div>
         <ul><li>Train through 2022-12-21; test through 2026-03-12</li><li>Scale market, risk, volatility, lag, and event features</li><li>Fit Ridge regression and save as a joblib pipeline</li><li>Export JSON metadata and CSV test predictions</li></ul>
       </div>
-      <footer><span>Pipeline: StandardScaler -> Ridge Regression</span><span>Slide 6</span></footer>
+      <footer><span>Pipeline: StandardScaler -> Ridge</span><span>Slide 6</span></footer>
     </section>
 
     <section class="slide" id="slide-7">
