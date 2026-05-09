@@ -1,7 +1,7 @@
 {
   "model_type": "sklearn.pipeline.Pipeline(StandardScaler, Ridge)",
   "target": "next_trading_day_brent_price_usd",
-  "trained_at": "2026-05-08",
+  "trained_at": "2026-05-09",
   "source_file": "datasets\\ops_market_daily.csv",
   "feature_columns": [
     "brent_price_usd",
