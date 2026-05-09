@@ -1,56 +1,64 @@
 # Semantic News and Oil Price Database Project Report
 
-**Prepared:** May 6, 2026  
+**Prepared:** May 9, 2026  
 **Workspace:** `DatabaseProject`  
-**Database target:** MySQL  
-**Modeling framework:** scikit-learn
+**Primary stack:** MySQL, pandas, scikit-learn, Plotly  
+**Scope:** Database design, data loading, feature engineering, forecasting, and reporting
 
 ## Executive Summary
 
-This project combines semantic/geopolitical news data with oil market pricing data to support both relational analysis and predictive oil price modeling. The workspace datasets were organized into a MySQL-ready schema with operational source tables, dimensional reporting tables, and analysis views. A scikit-learn model was trained to predict the next trading-day Brent crude oil price using market, lag, volatility, event, and geopolitical risk features.
+This project turns a collection of oil-market, geopolitical risk, semantic news, and country exposure CSV files into a reproducible analytics workflow. The codebase supports two complementary paths:
 
-The final model uses a `StandardScaler -> Ridge Regression` pipeline. On a chronological test split covering December 22, 2022 through March 12, 2026, the model achieved a test RMSE of **1.516 USD** and MAE of **1.118 USD**. The previous-price baseline RMSE was **1.536 USD**, so the fitted model performs slightly better than a strong short-horizon benchmark.
+1. A MySQL-backed database layer with operational tables, dimensional tables, and reusable SQL views.
+2. A time-series modeling layer that trains a transparent `StandardScaler -> Ridge` pipeline to predict next-trading-day Brent crude prices and produces a 10-day Monte Carlo forecast.
 
-## Project Objectives
+Validation in the local environment confirmed that the Python scripts compile, the model trains successfully, the forecast step runs end to end, and the visualization code builds the expected Plotly figures. The strongest one-day model result is a test RMSE of about **1.52 USD**, narrowly better than the previous-price baseline.
 
-- Compile all supplied CSV datasets into a MySQL database.
-- Preserve both operational data and dimensional/fact reporting structures.
-- Create analysis-ready SQL views for daily oil/news features, event reaction analysis, and country petrol impact analysis.
-- Train and export a predictive model for next trading-day Brent oil pricing.
-- Produce reusable artifacts for loading, modeling, prediction, and reporting.
+What makes the project useful is not just the model score, but the shape of the workflow. The database layer keeps the source data auditable and queryable, the modeling layer extracts a small but meaningful feature set from those tables, and the reporting layer packages the outputs into artifacts that are easy to present. That means the project is usable both as a demo and as a foundation for further iteration.
 
-## Data Sources and Coverage
+## Project Goals
 
-The workspace contains 20 CSV files under `datasets/`. The most important modeling and database tables are:
+- Load the supplied CSV datasets into a MySQL database.
+- Preserve the original operational tables while also creating BI-style dimension and fact tables.
+- Provide SQL views that simplify analysis of oil prices, geopolitical risk, and event impact.
+- Train and export a reproducible Brent price forecasting model.
+- Generate forecast artifacts and visualizations that can be reused in the presentation deck and notebook.
+
+## Data Foundation
+
+The workspace includes 20 CSV files in `datasets/`, covering market prices, geopolitical risk, events, country impact, and warehouse-ready reporting tables.
 
 | Dataset | Rows | Purpose |
 |---|---:|---|
-| `ops_market_daily.csv` | 4,047 | Daily Brent/WTI prices, macro-market indicators, lag features, volatility, and event flags |
-| `ops_gpr_daily.csv` | 15,078 | Daily geopolitical risk/news indices and article counts |
-| `ops_gpr_monthly.csv` | 1,515 | Monthly geopolitical risk indicators |
-| `ops_gpr_country_monthly.csv` | 66,660 | Country-month geopolitical risk measures |
-| `ops_events.csv` | 55 | Named geopolitical, war, sanctions, disaster, and market events |
-| `ops_countries.csv` | 18 | Country dimension for impact and petrol price analysis |
-| `ops_petrol_price_snapshots.csv` | 28 | Country petrol price snapshots and price change indicators |
-| `dim_*` / `fact_*` files | mixed | Warehouse-ready star schema tables |
+| `ops_market_daily.csv` | 4,047 | Daily Brent/WTI prices, market indicators, lags, volatility, and event fields |
+| `ops_gpr_daily.csv` | 15,078 | Daily geopolitical risk and semantic news measures |
+| `ops_gpr_monthly.csv` | 1,515 | Monthly geopolitical risk summary data |
+| `ops_gpr_country_monthly.csv` | 66,660 | Country-month geopolitical risk coverage |
+| `ops_events.csv` | 55 | Named geopolitical and market events |
+| `ops_countries.csv` | 18 | Country dimension for exposure analysis |
+| `ops_petrol_price_snapshots.csv` | 28 | Country petrol price snapshots |
+| `dim_*` / `fact_*` tables | mixed | Warehouse-ready reporting layer |
 
-The main modeling table, `ops_market_daily`, spans **February 17, 2010 through March 12, 2026**. Daily GPR data spans **January 1, 1985 through April 13, 2026**.
+The primary modeling table, `ops_market_daily.csv`, spans **2010-02-17 through 2026-03-12**. That gives the project a long enough time horizon for both model training and time-series evaluation.
 
 ## Database Design
 
-The database design uses two complementary layers.
+The database is organized into two layers.
 
 ### Operational Layer
 
-The operational layer directly represents the supplied source-style datasets. It is useful for model training, exploration, and tracing records back to the original CSVs.
+The operational layer preserves the source-style structure of the datasets. It is designed for traceability and for model feature engineering.
 
-Key tables:
+Important tables:
 
-- `ops_market_daily`: primary daily modeling table with oil prices, lagged oil prices, market indicators, volatility metrics, and event fields.
-- `ops_gpr_daily`: daily semantic/geopolitical news risk features.
-- `ops_events`: named events with event type, category, description, date, and severity.
-- `ops_countries`, `ops_country_impact`, and `ops_petrol_price_snapshots`: country exposure and petrol price impact analysis.
-- `ops_gpr_country_monthly`: country-month geopolitical risk history.
+- `ops_market_daily`
+- `ops_gpr_daily`
+- `ops_gpr_monthly`
+- `ops_gpr_country_monthly`
+- `ops_events`
+- `ops_countries`
+- `ops_country_impact`
+- `ops_petrol_price_snapshots`
 
 Important joins:
 
@@ -63,7 +71,7 @@ Important joins:
 
 ### Dimensional Layer
 
-The dimensional layer supports BI-style reporting with reusable dimensions and facts.
+The dimensional layer supports reporting and BI-style analysis.
 
 Key dimensions:
 
@@ -79,19 +87,21 @@ Key facts:
 - `fact_country_impact`
 - `fact_petrol_prices`
 
-This layout enables date-based time-series reporting, country impact comparison, and event-linked price analysis.
+This structure keeps the original data intact while making the reporting side cleaner and more reusable.
+
+The practical benefit is that the same data can be viewed in two ways. Analysts can work against the operational tables when they want source fidelity and flexible joins, while report authors can use the dimension and fact tables when they want stable keys and a more familiar warehouse-style layout. That separation makes the workspace easier to reason about than a single flattened table dump.
 
 ## SQL Views
 
-The project creates three analysis views in `sql/analytics_views.sql`.
+The loader applies `sql/analytics_views.sql` after the CSV import. It creates three useful views:
 
 | View | Description |
 |---|---|
-| `vw_daily_oil_news_features` | Daily joined Brent/WTI, GPR, event, and volatility features for analysis and modeling |
-| `vw_event_price_reaction` | Event-date oil price and risk indicators for event study analysis |
+| `vw_daily_oil_news_features` | Daily Brent/WTI, GPR, event, and volatility features for analysis and modeling |
+| `vw_event_price_reaction` | Event-date price and risk indicators for event-study style analysis |
 | `vw_country_petrol_impact` | Country exposure, petrol price snapshots, and vulnerability indicators |
 
-Example analysis query:
+Example query:
 
 ```sql
 SELECT market_date, brent_price_usd, gpr_index, event_type, event_severity
@@ -101,84 +111,106 @@ ORDER BY market_date DESC
 LIMIT 20;
 ```
 
-## MySQL Loading Workflow
+## Modeling Approach
 
-The MySQL loader is implemented in `src/load_mysql.py`. It:
+The predictive target is the **next trading-day Brent crude oil price in USD**.
 
-- Reads all CSV files from `datasets/`.
-- Uses `datasets/data_dictionary.csv` to infer MySQL column types.
-- Creates one table per CSV file.
-- Batches inserts for efficient loading.
-- Applies the SQL analysis views after loading.
+The training script, `src/train_oil_model.py`, uses:
 
-Recommended load command:
+- A chronological train/test split
+- Feature scaling with `StandardScaler`
+- `Ridge` regression for a transparent and reproducible baseline
 
-```powershell
-python src\load_mysql.py --replace
-```
+That choice is appropriate for this project because it keeps the model easy to explain in a database-and-analytics setting, while still allowing a meaningful comparison against a naive previous-price baseline.
 
-The optional `docker-compose.yml` starts a local MySQL 8.4 container for the project.
+This is intentionally not a black-box forecasting stack. The goal is to keep the signal interpretable: price history, lags, volatility, a broad risk index, and a small set of event features. In a project review, that is often more defensible than a more complex model that is harder to trace back to the underlying business question.
 
-## Predictive Modeling Approach
+### Model Features
 
-The predictive target is:
+The model uses 20 core input features from `ops_market_daily.csv`:
 
-**Next trading-day Brent crude oil price in USD**
-
-The training script is `src/train_oil_model.py`. It uses a chronological train/test split, which is appropriate for time-series style financial data because future rows are not allowed to influence past training rows.
-
-Model pipeline:
-
-```text
-StandardScaler -> Ridge Regression
-```
-
-Ridge regression was selected because it is transparent, fast, reproducible, and suitable for a database project showcase. Standardization helps keep the regularization behavior consistent across features with different units.
-
-## Model Features
-
-The model uses 20 features from `ops_market_daily.csv`:
-
-| Feature Group | Columns |
+| Group | Columns |
 |---|---|
-| Current oil prices | `brent_price_usd`, `wti_price_usd` |
+| Prices | `brent_price_usd`, `wti_price_usd` |
 | Market indicators | `dxy_index`, `vix_index` |
-| News/risk indicator | `gpr_index` |
+| Risk signal | `gpr_index` |
 | Returns | `brent_return`, `wti_return` |
-| Lagged prices | `brent_lag_1`, `brent_lag_3`, `brent_lag_7`, `wti_lag_1`, `wti_lag_3`, `wti_lag_7` |
+| Lags | `brent_lag_1`, `brent_lag_3`, `brent_lag_7`, `wti_lag_1`, `wti_lag_3`, `wti_lag_7` |
 | Volatility | `brent_volatility_7d`, `brent_volatility_30d`, `wti_volatility_7d`, `wti_volatility_30d` |
 | Spread | `brent_wti_spread` |
-| Event features | `event_severity`, `event_flag` |
+| Events | `event_severity`, `event_flag` |
 
-## Model Results
+Two small derived features are also computed in the training and prediction scripts:
 
-Training metadata:
+- 7-day Brent momentum
+- Short-term acceleration
+- Volatility regime ratio
 
-| Item | Value |
-|---|---:|
-| Training rows | 3,236 |
-| Test rows | 810 |
-| Training date range | 2010-02-18 to 2022-12-21 |
-| Test date range | 2022-12-22 to 2026-03-12 |
-| Ridge alpha | 0.1 |
+## Validated Results
 
-Performance:
+The current project artifacts report the following h=1 results:
 
-| Metric | Training | Test | Previous-Price Baseline |
+| Metric | Training | Test | Previous-price baseline |
 |---|---:|---:|---:|
 | MAE | 1.080 | 1.118 | 1.113 |
 | RMSE | 1.567 | 1.516 | 1.536 |
 | MAPE | 1.515% | 1.463% | 1.457% |
 | R-squared | 0.996 | 0.967 | 0.966 |
 
-The model narrowly improves RMSE versus the previous-price baseline. This is a realistic outcome for next-day oil price prediction, where yesterday's price is usually a very strong benchmark. The model's value is that it gives a reproducible framework for incorporating market, event, and semantic news features while remaining explainable.
+The improvement over the baseline is small, but that is a realistic outcome for next-day oil pricing. Yesterday's price is already a very strong predictor, so the real value of the model is the reproducible pipeline and the ability to incorporate market and risk context in a controlled way.
 
-Latest example prediction:
+The train/test split is chronological, which is important here because the data is a time series rather than an exchangeable sample. That means the model is evaluated the way it would actually be used: trained on the past and judged on the future. The reported metrics therefore reflect a more realistic deployment-style check than a shuffled split would.
 
-| Input Date | Current Brent | Predicted Next Trading-Day Brent |
-|---|---:|---:|
-| 2026-03-12 | 95.76 USD | 95.90 USD |
+### Horizon Results
+
+The training script also fits direct multi-step models for horizons h=1 through h=10. In the local validation run, the longer-horizon models remained usable but naturally degraded as the forecast horizon increased. The h=10 model still achieved a meaningful fit, which supports the forecast fan produced by the Monte Carlo step.
+
+## Forecasting
+
+`src/predict_oil_price.py` loads the trained h=1 model and generates a 10-day forward forecast.
+
+Forecasting behavior:
+
+- Runs Monte Carlo simulation paths
+- Injects Gaussian noise calibrated to the h=1 test RMSE
+- Applies a momentum blend using a recent linear trend
+- Exports a `forward_forecast.csv` file with median, P10, P25, P75, and P90 values
+
+That makes the output more informative than a single point estimate and gives the visualization layer a proper forecast fan.
+
+## Visualization
+
+`Visualization/visualize_predictions.py` generates two interactive Plotly figures:
+
+1. Actual vs predicted test-set scatter
+2. Model vs baseline vs actual time series with the Monte Carlo forecast fan appended
+
+The visualization step validated successfully in the local environment and produced both figures without error.
+
+Those charts are doing a useful job in the story of the project. The scatter plot shows whether the model tracks actual price levels at all, while the time-series plot shows how the model compares with the baseline and how uncertainty expands across the 10-day forecast window. That makes the outputs easier to interpret than a table of metrics alone.
+
+## Validation Summary
+
+The project was validated locally with the following checks:
+
+- Python bytecode compilation passed for all core scripts.
+- Required dependencies installed successfully in a temporary virtual environment.
+- Model training ran end to end on the checked-in data.
+- Monte Carlo forecasting completed successfully.
+- Plotly visualizations built successfully.
+- The core required feature columns are present in `ops_market_daily.csv`.
+
+## Notes and Risks
+
+Two implementation details are worth noting:
+
+- `main.py` currently relativizes artifact paths against the current working directory, which means it is not fully safe to launch from an arbitrary directory even though the file header suggests otherwise.
+- `main_with_db.py` uses plain `INSERT INTO` behavior during MySQL loading, so rerunning the loader against an already populated database volume will likely trigger duplicate-key errors unless `--replace` behavior is added or conflict handling is introduced.
+
+These are manageable issues, but they should be addressed before presenting the project as fully turnkey.
+
+Two additional practical notes are worth keeping in mind. First, the forecast artifact is written alongside the trained model, which keeps the handoff simple, but it also means the artifact directory becomes the canonical output location for both training and prediction. Second, the validation run confirmed that the core feature columns are present in the dataset, so the current pipeline is not depending on fragile ad hoc preprocessing to succeed.
 
 ## Conclusion
 
-The completed project demonstrates a full data workflow: source CSVs are transformed into a MySQL-ready analytical database, semantic news and geopolitical risk signals are joined with oil market features, and a scikit-learn predictive model is trained and exported. The result is suitable for a database project presentation because it includes schema design, SQL loading, analysis views, reproducible modeling, and report-ready artifacts.
+This project is a solid end-to-end example of a database-driven analytics workflow. It preserves the source data in a structured MySQL schema, adds analysis-ready SQL views, trains a transparent predictive model, and exports forecast artifacts that can be visualized and presented. The forecasting gain over baseline is modest, but the architecture is strong: it is reproducible, inspectable, and ready for iterative improvement.
