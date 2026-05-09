@@ -1,7 +1,7 @@
 {
   "model_type": "sklearn.pipeline.Pipeline(StandardScaler, Ridge)",
   "target": "next_trading_day_brent_price_usd",
-  "trained_at": "2026-05-06",
+  "trained_at": "2026-05-08",
   "source_file": "datasets\\ops_market_daily.csv",
   "feature_columns": [
     "brent_price_usd",
@@ -38,15 +38,15 @@
     "2026-03-12"
   ],
   "train_metrics": {
-    "mae": 1.0797037238252245,
-    "rmse": 1.5670925894005907,
-    "mape_pct": 1.5152027082387876,
+    "mae": 1.0797037238252247,
+    "rmse": 1.567092589400591,
+    "mape_pct": 1.5152027082387889,
     "r2": 0.9963583490886734
   },
   "test_metrics": {
-    "mae": 1.1183845480053138,
+    "mae": 1.118384548005314,
     "rmse": 1.5158965359759458,
-    "mape_pct": 1.463229095514654,
+    "mape_pct": 1.463229095514655,
     "r2": 0.9668867637540156
   },
   "baseline_previous_price_metrics": {
