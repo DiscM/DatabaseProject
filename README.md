@@ -78,6 +78,8 @@ sql/analytics_views.sql    MySQL views for analysis-ready joins
 model_artifacts/           Trained models, test predictions, forecast CSV
 reports/                   Markdown project report
 output/pdf/                Exported PDF report
+scripts/export_html_presentation_pdf.ps1
+                           HTML presentation to PDF export pipeline
 docker-compose.yml         Local MySQL 8.4 service
 ```
 
@@ -200,6 +202,17 @@ python compile_notebook.py
 
 Rebuilds `oil_news_project_demo.ipynb` by reading the current source files
 verbatim. Open and run it top-to-bottom in Jupyter for an end-to-end demo.
+
+### 8. Export the HTML Presentation to PDF
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\export_html_presentation_pdf.ps1
+```
+
+The export script prints `output/presentations/oil_news_project_presentation.html`
+with headless Chrome or Edge, writes
+`output/presentations/oil_news_project_presentation_from_html.pdf`, verifies the
+expected 9-page deck text, and removes its temporary browser profile.
 
 
 
