@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.4.27)  9 MAY 2026 06:41
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.4.27)  9 MAY 2026 07:07
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -564,29 +564,53 @@ Before submitting the final camera ready copy, remember to:
 LaTeX2e <2025-11-01>
 L3 programming layer <2025-12-29>
  ***********
-Package rerunfilecheck Info: File `oil_news_database_model_report.out' has not 
-changed.
-(rerunfilecheck)             Checksum: 3762A5263482A8B6A0E7C22508684928;1956.
+
+
+Package rerunfilecheck Warning: File `oil_news_database_model_report.out' has c
+hanged.
+(rerunfilecheck)                Rerun to get outlines right
+(rerunfilecheck)                or use package `bookmark'.
+
+Package rerunfilecheck Info: Checksums for `oil_news_database_model_report.out'
+:
+(rerunfilecheck)             Before: E30E914EDA5D389C318A6CA8D0D1D889;2386
+(rerunfilecheck)             After:  3762A5263482A8B6A0E7C22508684928;1956.
  ) 
 Here is how much of TeX's memory you used:
- 12280 strings out of 467871
- 188752 string characters out of 5418376
- 632336 words of memory out of 5000000
- 40991 multiletter control sequences out of 15000+600000
+ 12287 strings out of 467871
+ 188848 string characters out of 5418376
+ 632339 words of memory out of 5000000
+ 40994 multiletter control sequences out of 15000+600000
  741912 words of font info for 158 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  75i,10n,79p,602b,1070s stack positions out of 10000i,1000n,20000p,200000b,200000s
-<C:/Users/ssala/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/
-cmsy7.pfb><C:/Users/ssala/AppData/Local/Programs/MiKTeX/fonts/type1/urw/courier
-/ucrb8a.pfb><C:/Users/ssala/AppData/Local/Programs/MiKTeX/fonts/type1/urw/couri
-er/ucrr8a.pfb><C:/Users/ssala/AppData/Local/Programs/MiKTeX/fonts/type1/urw/tim
-es/utmb8a.pfb><C:/Users/ssala/AppData/Local/Programs/MiKTeX/fonts/type1/urw/tim
-es/utmbi8a.pfb><C:/Users/ssala/AppData/Local/Programs/MiKTeX/fonts/type1/urw/ti
-mes/utmr8a.pfb><C:/Users/ssala/AppData/Local/Programs/MiKTeX/fonts/type1/urw/ti
-mes/utmri8a.pfb>
-Output written on oil_news_database_model_report.pdf (3 pages, 115771 bytes).
+
+pdfTeX warning (dest): name{section.13} has been referenced but does not exist,
+ replaced by a fixed one
+
+
+pdfTeX warning (dest): name{subsection.8.1} has been referenced but does not ex
+ist, replaced by a fixed one
+
+
+pdfTeX warning (dest): name{subsection.5.2} has been referenced but does not ex
+ist, replaced by a fixed one
+
+
+pdfTeX warning (dest): name{subsection.5.1} has been referenced but does not ex
+ist, replaced by a fixed one
+
+<C:/Users/ssala/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cm
+sy7.pfb><C:/Users/ssala/AppData/Local/Programs/MiKTeX/fonts/type1/urw/courier/u
+crb8a.pfb><C:/Users/ssala/AppData/Local/Programs/MiKTeX/fonts/type1/urw/courier
+/ucrr8a.pfb><C:/Users/ssala/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times
+/utmb8a.pfb><C:/Users/ssala/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times
+/utmbi8a.pfb><C:/Users/ssala/AppData/Local/Programs/MiKTeX/fonts/type1/urw/time
+s/utmr8a.pfb><C:/Users/ssala/AppData/Local/Programs/MiKTeX/fonts/type1/urw/time
+s/utmri8a.pfb>
+Output written on oil_news_database_model_report.pdf (3 pages, 117333 bytes).
 PDF statistics:
- 140 PDF objects out of 1000 (max. 8388607)
- 33 named destinations out of 1000 (max. 500000)
- 129 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 156 PDF objects out of 1000 (max. 8388607)
+ 37 named destinations out of 1000 (max. 500000)
+ 153 words of extra memory for PDF output out of 10000 (max. 10000000)
 
