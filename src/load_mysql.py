@@ -15,7 +15,11 @@ if str(_Path(__file__).parent) not in sys.path:
 from db_config import get_mysql_config
 
 
-DATASET_DIR = Path("datasets")
+_SCRIPT_DIR = Path(__file__).resolve().parent
+DATASET_DIR = _SCRIPT_DIR.parent / "datasets"
+SQL_DIR     = _SCRIPT_DIR.parent / "sql"
+
+_METADATA_TABLES = {"data_dictionary", "source_catalog"}
 
 DATE_COLUMNS = {
     "trade_date",
@@ -154,7 +158,10 @@ def main() -> None:
     cursor.execute(f"USE {q(config.database)}")
 
     dictionary = load_data_dictionary(args.dataset_dir / "data_dictionary.csv")
-    csv_files = sorted(args.dataset_dir.glob("*.csv"))
+    csv_files = sorted(
+        p for p in args.dataset_dir.glob("*.csv")
+        if p.stem not in _METADATA_TABLES
+    )
     if args.only:
         wanted = set(args.only)
         csv_files = [path for path in csv_files if path.stem in wanted]
@@ -165,7 +172,7 @@ def main() -> None:
         connection.commit()
         print(f"Loaded {loaded:>6} rows into {table}")
 
-    apply_sql_file(cursor, Path("sql") / "analytics_views.sql", config.database)
+    apply_sql_file(cursor, SQL_DIR / "analytics_views.sql", config.database)
     connection.commit()
     cursor.close()
     connection.close()

@@ -34,14 +34,9 @@ for _p in (_SRC, _VIZ):
         sys.path.insert(0, _p)
 
 # ── Local imports ─────────────────────────────────────────────────────────────
-from db_config           import get_mysql_config
-import load_mysql        as _loader
-import train_oil_model   as _train
-import predict_oil_price as _predict
-import visualize_predictions as _viz
-
-# Pull the core pipeline functions from main.py (avoids duplication)
-from main import run_train, run_predict, run_visualize
+from db_config  import get_mysql_config
+import load_mysql as _loader
+from pipeline   import run_train, run_predict, run_visualize
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -111,7 +106,7 @@ def wait_for_mysql_ready(
             conn.close()
             print(f"  MySQL is ready after {attempt} poll(s).")
             return
-        except Exception as exc:  # noqa: BLE001
+        except mysql.errors.Error as exc:
             print(f"    [{attempt}] Init in progress ({exc}) — retrying ...")
             time.sleep(poll_interval_s)
 
@@ -144,7 +139,10 @@ def run_load_mysql(
     cursor.execute(f"USE {_loader.q(config.database)}")
 
     dictionary = _loader.load_data_dictionary(dataset_dir / "data_dictionary.csv")
-    csv_files  = sorted(dataset_dir.glob("*.csv"))
+    csv_files  = sorted(
+        p for p in dataset_dir.glob("*.csv")
+        if p.stem not in _loader._METADATA_TABLES
+    )
     if only:
         wanted    = set(only)
         csv_files = [p for p in csv_files if p.stem in wanted]

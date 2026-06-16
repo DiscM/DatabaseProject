@@ -3,8 +3,8 @@
   "strategy": "direct_multi_step",
   "max_horizon_trading_days": 10,
   "horizon_trading_days": 1,
-  "trained_at": "2026-05-09",
-  "source_file": "datasets\\ops_market_daily.csv",
+  "trained_at": "2026-06-15",
+  "source_file": "datasets/ops_market_daily.csv",
   "feature_columns": [
     "brent_price_usd",
     "wti_price_usd",
@@ -32,11 +32,11 @@
     "brent_accel",
     "vol_regime"
   ],
-  "model_file": "model_artifacts\\oil_price_model.joblib",
+  "model_file": "model_artifacts/oil_price_model.joblib",
   "alpha": 0.1,
   "per_horizon": {
     "1": {
-      "model_file": "model_artifacts\\oil_price_model_h1.joblib",
+      "model_file": "model_artifacts/oil_price_model_h1.joblib",
       "rmse": 1.5187,
       "mae": 1.121,
       "r2": 0.966766,
@@ -49,7 +49,7 @@
       ]
     },
     "2": {
-      "model_file": "model_artifacts\\oil_price_model_h2.joblib",
+      "model_file": "model_artifacts/oil_price_model_h2.joblib",
       "rmse": 2.1901,
       "mae": 1.6132,
       "r2": 0.930939,
@@ -62,7 +62,7 @@
       ]
     },
     "3": {
-      "model_file": "model_artifacts\\oil_price_model_h3.joblib",
+      "model_file": "model_artifacts/oil_price_model_h3.joblib",
       "rmse": 2.6593,
       "mae": 1.9789,
       "r2": 0.898186,
@@ -75,7 +75,7 @@
       ]
     },
     "4": {
-      "model_file": "model_artifacts\\oil_price_model_h4.joblib",
+      "model_file": "model_artifacts/oil_price_model_h4.joblib",
       "rmse": 3.0461,
       "mae": 2.2793,
       "r2": 0.866412,
@@ -88,7 +88,7 @@
       ]
     },
     "5": {
-      "model_file": "model_artifacts\\oil_price_model_h5.joblib",
+      "model_file": "model_artifacts/oil_price_model_h5.joblib",
       "rmse": 3.4374,
       "mae": 2.5535,
       "r2": 0.829885,
@@ -101,7 +101,7 @@
       ]
     },
     "6": {
-      "model_file": "model_artifacts\\oil_price_model_h6.joblib",
+      "model_file": "model_artifacts/oil_price_model_h6.joblib",
       "rmse": 3.7346,
       "mae": 2.7592,
       "r2": 0.799194,
@@ -114,7 +114,7 @@
       ]
     },
     "7": {
-      "model_file": "model_artifacts\\oil_price_model_h7.joblib",
+      "model_file": "model_artifacts/oil_price_model_h7.joblib",
       "rmse": 3.9655,
       "mae": 2.9335,
       "r2": 0.773651,
@@ -127,7 +127,7 @@
       ]
     },
     "8": {
-      "model_file": "model_artifacts\\oil_price_model_h8.joblib",
+      "model_file": "model_artifacts/oil_price_model_h8.joblib",
       "rmse": 4.1794,
       "mae": 3.1127,
       "r2": 0.748575,
@@ -140,7 +140,7 @@
       ]
     },
     "9": {
-      "model_file": "model_artifacts\\oil_price_model_h9.joblib",
+      "model_file": "model_artifacts/oil_price_model_h9.joblib",
       "rmse": 4.3856,
       "mae": 3.2548,
       "r2": 0.723148,
@@ -153,7 +153,7 @@
       ]
     },
     "10": {
-      "model_file": "model_artifacts\\oil_price_model_h10.joblib",
+      "model_file": "model_artifacts/oil_price_model_h10.joblib",
       "rmse": 4.5363,
       "mae": 3.361,
       "r2": 0.703797,
@@ -168,14 +168,18 @@
   },
   "train_rows": 3236,
   "test_rows": 810,
+  "train_date_range": [
+    "2010-02-18",
+    "2022-12-21"
+  ],
   "test_date_range": [
     "2022-12-22",
     "2026-03-12"
   ],
   "train_metrics": {
-    "mae": 1.0797064307550504,
-    "rmse": 1.5666956207827276,
-    "mape_pct": 1.515344915341884,
+    "mae": 1.0797064307550563,
+    "rmse": 1.5666956207827312,
+    "mape_pct": 1.515344915341807,
     "r2": 0.9963601938271908
   },
   "test_metrics": {

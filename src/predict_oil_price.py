@@ -25,27 +25,7 @@ from pathlib import Path
 
 import joblib
 
-
-# ---------------------------------------------------------------------------
-# Helpers  (must stay in sync with train_oil_model.py)
-# ---------------------------------------------------------------------------
-
-def to_float(value: str | None) -> float:
-    if value is None or value == "":
-        raise ValueError("Missing numeric input.")
-    return float(value)
-
-
-def compute_derived(vals: dict[str, float]) -> list[float]:
-    p   = vals.get("brent_price_usd")
-    l1  = vals.get("brent_lag_1")
-    l7  = vals.get("brent_lag_7")
-    v7  = vals.get("brent_volatility_7d")
-    v30 = vals.get("brent_volatility_30d")
-    momentum_7d = (p  - l7) if p  is not None and l7  is not None else 0.0
-    accel       = (l1 - l7) if l1 is not None and l7  is not None else 0.0
-    vol_regime  = (v7 / v30) if v7 is not None and v30 is not None and v30 != 0.0 else 1.0
-    return [momentum_7d, accel, vol_regime]
+from features import compute_derived, to_float_strict as to_float
 
 
 def estimate_future_trading_date(base_date_str: str, trading_days_ahead: int) -> str:
@@ -252,30 +232,19 @@ def apply_momentum_blend(
 # Main
 # ---------------------------------------------------------------------------
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Monte Carlo stochastic forecast for Brent crude oil."
-    )
-    parser.add_argument("--metadata",        type=Path,  default=Path("model_artifacts") / "oil_price_model.json")
-    parser.add_argument("--model",           type=Path,  default=None)
-    parser.add_argument("--market-csv",      type=Path,  default=Path("datasets") / "ops_market_daily.csv")
-    parser.add_argument("--forecast-days",   type=int,   default=10)
-    parser.add_argument("--n-sims",          type=int,   default=500,
-                        help="Number of Monte Carlo simulation paths (default: 500).")
-    parser.add_argument("--seed",            type=int,   default=42)
-    parser.add_argument("--momentum-blend",  type=float, default=0.4,
-                        help="Weight given to the linear trend extrapolation "
-                             "(0=pure MC, 1=pure trend, default: 0.4).")
-    parser.add_argument("--momentum-window", type=int,   default=10,
-                        help="Number of recent trading days used to estimate "
-                             "the price trend (default: 10).")
-    args = parser.parse_args()
-
-    artifact        = json.loads(args.metadata.read_text(encoding="utf-8"))
-    model_path      = args.model or Path(artifact.get("model_file", "model_artifacts/oil_price_model.joblib"))
+def run_forecast(
+    artifact_path: Path,
+    market_csv: Path,
+    forecast_days: int = 10,
+    n_sims: int = 500,
+    momentum_blend: float = 0.4,
+    momentum_window: int = 10,
+    seed: int = 42,
+) -> Path:
+    artifact        = json.loads(artifact_path.read_text(encoding="utf-8"))
+    model_path      = Path(artifact.get("model_file", "model_artifacts/oil_price_model.joblib"))
     feature_columns = artifact["feature_columns"]
 
-    # Noise sigma: h=1 test-set RMSE (calibrated to actual 1-day prediction error)
     sigma = float(
         artifact.get("test_metrics", {}).get("rmse")
         or artifact.get("per_horizon", {}).get("1", {}).get("rmse")
@@ -284,36 +253,35 @@ def main() -> None:
 
     model = joblib.load(model_path)
 
-    with args.market_csv.open(newline="", encoding="utf-8-sig") as handle:
+    with market_csv.open(newline="", encoding="utf-8-sig") as handle:
         rows = list(csv.DictReader(handle))
     sorted_rows = sorted(rows, key=lambda r: r["market_date"])
     last_row    = sorted_rows[-1]
 
     print("=" * 60)
     print("  BRENT CRUDE OIL - MONTE CARLO FORECAST")
-    print(f"  Paths: {args.n_sims}   Noise sigma: ${sigma:.2f}/day")
-    print(f"  Momentum blend: {args.momentum_blend:.0%} trend  "
-          f"({args.momentum_window}-day window)")
+    print(f"  Paths: {n_sims}   Noise sigma: ${sigma:.2f}/day")
+    print(f"  Momentum blend: {momentum_blend:.0%} trend  "
+          f"({momentum_window}-day window)")
     print("=" * 60)
     print(f"  Last data date : {last_row['market_date']}")
     print(f"  Current Brent  : ${float(last_row['brent_price_usd']):.2f}")
-    print(f"  Forecast window: {args.forecast_days} trading days")
+    print(f"  Forecast window: {forecast_days} trading days")
     print("=" * 60)
 
     forecasts = monte_carlo_forecast(
         model, feature_columns, sorted_rows,
-        args.forecast_days, args.n_sims, sigma, args.seed,
+        forecast_days, n_sims, sigma, seed,
     )
 
-    # Apply momentum blend to the aggregated medians
     forecasts, trend_slope = apply_momentum_blend(
         forecasts, sorted_rows,
-        momentum_window=args.momentum_window,
-        blend_weight=args.momentum_blend,
+        momentum_window=momentum_window,
+        blend_weight=momentum_blend,
     )
     direction = "up" if trend_slope >= 0 else "down"
     print(f"  Trend slope    : ${trend_slope:+.3f}/day ({direction}ward)"
-          f"  blend={args.momentum_blend:.0%}")
+          f"  blend={momentum_blend:.0%}")
 
     print(f"\n{'Date':<14} {'Med ($)':<12} {'P10':<10} {'P25':<10} {'P75':<10} {'P90'}")
     print("-" * 66)
@@ -334,6 +302,46 @@ def main() -> None:
         writer.writeheader()
         writer.writerows(forecasts)
     print(f"\nSaved {len(forecasts)}-day Monte Carlo forecast -> {forecast_path}")
+    return forecast_path
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Monte Carlo stochastic forecast for Brent crude oil."
+    )
+    parser.add_argument("--metadata",        type=Path,  default=Path("model_artifacts") / "oil_price_model.json")
+    parser.add_argument("--model",           type=Path,  default=None)
+    parser.add_argument("--market-csv",      type=Path,  default=Path("datasets") / "ops_market_daily.csv")
+    parser.add_argument("--forecast-days",   type=int,   default=10)
+    parser.add_argument("--n-sims",          type=int,   default=500,
+                        help="Number of Monte Carlo simulation paths (default: 500).")
+    parser.add_argument("--seed",            type=int,   default=42)
+    parser.add_argument("--momentum-blend",  type=float, default=0.4,
+                        help="Weight given to the linear trend extrapolation "
+                             "(0=pure MC, 1=pure trend, default: 0.4).")
+    parser.add_argument("--momentum-window", type=int,   default=10,
+                        help="Number of recent trading days used to estimate "
+                             "the price trend (default: 10).")
+    args = parser.parse_args()
+
+    artifact_path = args.metadata
+    model_path    = args.model
+    market_csv    = args.market_csv
+
+    if model_path is not None:
+        artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+        artifact["model_file"] = str(model_path)
+        artifact_path = Path("tmp_metadata.json")
+        artifact_path.write_text(json.dumps(artifact), encoding="utf-8")
+
+    run_forecast(
+        artifact_path, market_csv,
+        forecast_days=args.forecast_days,
+        n_sims=args.n_sims,
+        momentum_blend=args.momentum_blend,
+        momentum_window=args.momentum_window,
+        seed=args.seed,
+    )
 
 
 if __name__ == "__main__":
