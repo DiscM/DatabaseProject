@@ -111,9 +111,44 @@ def write_predictions(
             writer.writerow([d, a, p, b, horizon])
 
 
+def _rel(path: Path) -> str:
+    """Portable relative path (relative to CWD if possible)."""
+    return str(path.relative_to(Path.cwd()) if path.is_absolute() else path)
+
+
 def _valid_length(n: int, h: int) -> int:
     """Number of valid (X, y) pairs for horizon h with n source rows."""
     return n - h
+
+
+def _load_feature_data(
+    market_csv: Path, cache_dir: Path, use_cache: bool
+) -> tuple[np.ndarray, np.ndarray, list[str]]:
+    """Return (x_full, prices, date_list), reusing a cached .npz when the
+    source CSV is unchanged so repeated runs (e.g. alpha sweeps) skip parsing.
+    """
+    cache_path = cache_dir / "feature_matrix.npz"
+    src_mtime = market_csv.stat().st_mtime
+
+    if use_cache and cache_path.exists():
+        cached = np.load(cache_path, allow_pickle=False)
+        if float(cached["src_mtime"]) == src_mtime:
+            return cached["x_full"], cached["prices"], cached["dates"].tolist()
+
+    df = pd.read_csv(market_csv, encoding="utf-8-sig").sort_values("market_date")
+    prices = df["brent_price_usd"].to_numpy(dtype=np.float64)
+    x_full, date_list = _build_feature_matrix(df)
+
+    if use_cache:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        np.savez(
+            cache_path,
+            x_full=x_full,
+            prices=prices,
+            dates=np.array(date_list, dtype="U10"),
+            src_mtime=np.array(src_mtime),
+        )
+    return x_full, prices, date_list
 
 
 def train_models(
@@ -122,12 +157,11 @@ def train_models(
     alpha: float = 0.1,
     test_ratio: float = 0.2,
     max_horizon: int = 10,
+    use_cache: bool = True,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    df = pd.read_csv(market_csv, encoding="utf-8-sig").sort_values("market_date")
-    prices = df["brent_price_usd"].to_numpy(dtype=np.float64)
-    x_full, date_list = _build_feature_matrix(df)
+    x_full, prices, date_list = _load_feature_data(market_csv, output_dir, use_cache)
     n = len(x_full)
 
     if n < 50:
@@ -143,6 +177,7 @@ def train_models(
     per_horizon: dict[int, dict] = {}
     h1_test_dates = h1_test_y = h1_test_preds = h1_baseline = None
     h1_train_metrics = h1_baseline_metrics = None
+    h1_model: Ridge | None = None
 
     print(f"Training {max_horizon} direct-horizon Ridge models "
           f"(alpha={alpha}) on {n} feature rows ...")
@@ -181,6 +216,11 @@ def train_models(
             "mae":             round(m_test["mae"],      4),
             "r2":              round(m_test["r2"],       6),
             "mape_pct":        round(m_test["mape_pct"], 4),
+            "train_rmse":      round(m_train["rmse"],     4),
+            "train_mae":       round(m_train["mae"],      4),
+            "train_r2":        round(m_train["r2"],       6),
+            "train_mape_pct":  round(m_train["mape_pct"], 4),
+            "n_features":      train_x.shape[1],
             "train_rows":      len(train_x),
             "test_rows":       len(test_x),
             "test_date_range": [date_list[split_idx], date_list[valid - 1]],
@@ -194,6 +234,7 @@ def train_models(
             h1_baseline      = [float(row[0]) for row in test_x]
             h1_train_metrics = m_train
             h1_baseline_metrics = metrics(test_y.tolist(), h1_baseline)
+            h1_model         = model
 
         print(f"  h={h:02d}: RMSE={m_test['rmse']:.3f} USD  "
               f"MAE={m_test['mae']:.3f} USD  R²={m_test['r2']:.4f}")
@@ -204,14 +245,15 @@ def train_models(
     assert h1_test_dates is not None
     assert h1_test_y is not None
     assert h1_test_preds is not None
+    assert h1_model is not None
     assert h1_baseline is not None
     write_predictions(
         output_dir / "test_predictions.csv",
         h1_test_dates, h1_test_y, h1_test_preds, h1_baseline, horizon=1,
     )
 
-    def _rel(p):
-        return str(p.relative_to(Path.cwd()) if p.is_absolute() else p)
+    feature_names = FEATURE_COLUMNS + COMPUTED_FEATURE_NAMES
+    coefficients = dict(zip(feature_names, (round(float(c), 6) for c in h1_model.coef_), strict=False))
     artifact = {
         "model_type":              "sklearn.pipeline.Pipeline(StandardScaler, Ridge)",
         "strategy":                "direct_multi_step",
@@ -224,9 +266,11 @@ def train_models(
         "model_file":              _rel(output_dir / "oil_price_model.joblib"),
         "alpha":                   alpha,
         "per_horizon":             per_horizon,
+        "h1_coefficients":         coefficients,
+        "data_rows":               len(x_full),
         "train_rows":              per_horizon[1]["train_rows"],
         "test_rows":               per_horizon[1]["test_rows"],
-        "train_date_range":        [date_list[0], date_list[split_idx - 1]],
+        "train_date_range":        [date_list[0], date_list[h1_split - 1]],
         "test_date_range":         per_horizon[1]["test_date_range"],
         "train_metrics":           h1_train_metrics,
         "test_metrics":            {k: v for k, v in per_horizon[1].items()
@@ -256,8 +300,13 @@ def main() -> None:
                         help="Ridge regularization strength (default: 0.1).")
     parser.add_argument("--max-horizon",  type=int,   default=10,
                         help="Number of horizon models to train, 1 through N (default: 10).")
+    parser.add_argument("--no-cache", action="store_true",
+                        help="Disable the cached feature matrix and re-parse the CSV.")
     args = parser.parse_args()
-    train_models(args.market_csv, args.output_dir, args.alpha, args.test_ratio, args.max_horizon)
+    train_models(
+        args.market_csv, args.output_dir, args.alpha, args.test_ratio,
+        args.max_horizon, use_cache=not args.no_cache,
+    )
 
 
 if __name__ == "__main__":

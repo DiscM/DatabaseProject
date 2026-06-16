@@ -19,11 +19,11 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import random as _random
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import joblib
+import numpy as np
 
 from features import compute_derived
 from features import to_float_strict as to_float
@@ -71,12 +71,13 @@ def monte_carlo_forecast(
     seed: int = 42,
 ) -> list[dict]:
     """
-    Run `n_sims` independent stochastic forecast paths.
+    Run `n_sims` independent stochastic forecast paths, vectorized across
+    simulations.
 
-    Each path applies the h=1 Ridge model iteratively; at every step
-    Gaussian noise N(0, sigma) is injected into the predicted price before
-    it is fed back as the next input.  sigma = h=1 test-set RMSE, so the
-    noise is calibrated to the model's actual 1-day prediction uncertainty.
+    All `n_sims` paths share the same forecast step, so at each step a single
+    batched `model.predict()` call scores the entire `(n_sims, n_features)`
+    matrix at once instead of one row at a time.  Gaussian noise N(0, sigma)
+    is injected per path so paths diverge; sigma = h=1 test-set RMSE.
 
     Returns one dict per forecast day with median + percentile statistics.
     """
@@ -98,91 +99,128 @@ def monte_carlo_forecast(
         except ValueError:
             anchor[col] = 0.0
 
-    rng = _random.Random(seed)
-    all_paths: list[list[float]] = []
+    col_index = {col: i for i, col in enumerate(feature_columns)}
+    n_feat = len(feature_columns)
+    rng = np.random.default_rng(seed)
 
-    for _ in range(n_sims):
-        brent_buf     = list(brent_price_init)
-        wti_buf       = list(wti_price_init)
-        brent_ret_buf = list(brent_return_init)
-        wti_ret_buf   = list(wti_return_init)
-        path: list[float] = []
+    # Per-simulation rolling buffers as 2-d arrays (n_sims, history_len).
+    def _tile(init: list[float]) -> np.ndarray:
+        return np.tile(np.asarray(init, dtype=np.float64), (n_sims, 1))
 
-        for step in range(1, forecast_days + 1):
-            if step == 1:
-                raw_vals    = {col: float(last_row.get(col, 0) or 0) for col in feature_columns}
-                feature_vec = [raw_vals[col] for col in feature_columns] + compute_derived(raw_vals)
-            else:
-                brent     = brent_buf[-1]
-                wti       = wti_buf[-1]
-                brent_ret = brent_ret_buf[-1]
-                wti_ret   = wti_ret_buf[-1]
-                row: dict[str, float] = {}
-                for col in feature_columns:
-                    if col == "brent_price_usd":
-                        row[col] = brent
-                    elif col == "wti_price_usd":
-                        row[col] = wti
-                    elif col == "brent_return":
-                        row[col] = brent_ret
-                    elif col == "wti_return":
-                        row[col] = wti_ret
-                    elif col == "brent_lag_1":
-                        row[col] = _buf_get(brent_buf, 1)
-                    elif col == "brent_lag_3":
-                        row[col] = _buf_get(brent_buf, 3)
-                    elif col == "brent_lag_7":
-                        row[col] = _buf_get(brent_buf, 7)
-                    elif col == "wti_lag_1":
-                        row[col] = _buf_get(wti_buf, 1)
-                    elif col == "wti_lag_3":
-                        row[col] = _buf_get(wti_buf, 3)
-                    elif col == "wti_lag_7":
-                        row[col] = _buf_get(wti_buf, 7)
-                    elif col == "brent_volatility_7d":
-                        row[col] = _rolling_std(brent_ret_buf[-7:])
-                    elif col == "brent_volatility_30d":
-                        row[col] = _rolling_std(brent_ret_buf[-30:])
-                    elif col == "wti_volatility_7d":
-                        row[col] = _rolling_std(wti_ret_buf[-7:])
-                    elif col == "wti_volatility_30d":
-                        row[col] = _rolling_std(wti_ret_buf[-30:])
-                    elif col == "brent_wti_spread":
-                        row[col] = brent - wti
-                    elif col in ("event_severity", "event_flag"):
-                        row[col] = 0.0
-                    else:
-                        row[col] = anchor.get(col, 0.0)
-                feature_vec = [row[col] for col in feature_columns] + compute_derived(row)
+    brent_buf     = _tile(brent_price_init)
+    wti_buf       = _tile(wti_price_init)
+    brent_ret_buf = _tile(brent_return_init)
+    wti_ret_buf   = _tile(wti_return_init)
 
-            pred_brent  = float(model.predict([feature_vec])[0])
-            pred_brent += rng.gauss(0.0, sigma)   # stochastic noise
-            path.append(pred_brent)
+    def _col(buf: np.ndarray, n: int) -> np.ndarray:
+        """Vectorized _buf_get: column -(n+1) if long enough else column 0."""
+        return buf[:, -(n + 1)] if buf.shape[1] > n else buf[:, 0]
 
-            prev_brent = brent_buf[-1]
-            prev_wti   = wti_buf[-1]
-            pred_wti   = pred_brent - spread
-            brent_ret_new = (pred_brent - prev_brent) / prev_brent if prev_brent else 0.0
-            wti_ret_new   = (pred_wti   - prev_wti)   / prev_wti   if prev_wti   else 0.0
-            brent_buf.append(pred_brent)
-            wti_buf.append(pred_wti)
-            brent_ret_buf.append(brent_ret_new)
-            wti_ret_buf.append(wti_ret_new)
+    def _vol(buf: np.ndarray, k: int) -> np.ndarray:
+        """Vectorized rolling sample std over the last k columns."""
+        if buf.shape[1] < 2:
+            return np.zeros(n_sims)
+        return np.std(buf[:, -k:], axis=1, ddof=1)
 
-        all_paths.append(path)
+    # Computed-feature indices (appended after raw features by the model).
+    computed_cols = ["brent_momentum_7d", "brent_accel", "vol_regime"]
+
+    all_paths = np.empty((n_sims, forecast_days), dtype=np.float64)
+
+    for step in range(1, forecast_days + 1):
+        feats = np.empty((n_sims, n_feat + len(computed_cols)), dtype=np.float64)
+
+        if step == 1:
+            base = np.array(
+                [float(last_row.get(col, 0) or 0) for col in feature_columns],
+                dtype=np.float64,
+            )
+            feats[:, :n_feat] = base
+            derived = compute_derived(
+                {col: float(last_row.get(col, 0) or 0) for col in feature_columns}
+            )
+            feats[:, n_feat:] = np.asarray(derived, dtype=np.float64)
+        else:
+            brent     = brent_buf[:, -1]
+            wti       = wti_buf[:, -1]
+            brent_ret = brent_ret_buf[:, -1]
+            wti_ret   = wti_ret_buf[:, -1]
+            for col in feature_columns:
+                i = col_index[col]
+                if col == "brent_price_usd":
+                    feats[:, i] = brent
+                elif col == "wti_price_usd":
+                    feats[:, i] = wti
+                elif col == "brent_return":
+                    feats[:, i] = brent_ret
+                elif col == "wti_return":
+                    feats[:, i] = wti_ret
+                elif col == "brent_lag_1":
+                    feats[:, i] = _col(brent_buf, 1)
+                elif col == "brent_lag_3":
+                    feats[:, i] = _col(brent_buf, 3)
+                elif col == "brent_lag_7":
+                    feats[:, i] = _col(brent_buf, 7)
+                elif col == "wti_lag_1":
+                    feats[:, i] = _col(wti_buf, 1)
+                elif col == "wti_lag_3":
+                    feats[:, i] = _col(wti_buf, 3)
+                elif col == "wti_lag_7":
+                    feats[:, i] = _col(wti_buf, 7)
+                elif col == "brent_volatility_7d":
+                    feats[:, i] = _vol(brent_ret_buf, 7)
+                elif col == "brent_volatility_30d":
+                    feats[:, i] = _vol(brent_ret_buf, 30)
+                elif col == "wti_volatility_7d":
+                    feats[:, i] = _vol(wti_ret_buf, 7)
+                elif col == "wti_volatility_30d":
+                    feats[:, i] = _vol(wti_ret_buf, 30)
+                elif col == "brent_wti_spread":
+                    feats[:, i] = brent - wti
+                elif col in ("event_severity", "event_flag"):
+                    feats[:, i] = 0.0
+                else:
+                    feats[:, i] = anchor.get(col, 0.0)
+
+            # Computed features (vectorized): momentum, accel, vol regime.
+            b_price = feats[:, col_index["brent_price_usd"]]
+            b_lag1  = feats[:, col_index["brent_lag_1"]]
+            b_lag7  = feats[:, col_index["brent_lag_7"]]
+            v7      = feats[:, col_index["brent_volatility_7d"]]
+            v30     = feats[:, col_index["brent_volatility_30d"]]
+            feats[:, n_feat + 0] = b_price - b_lag7
+            feats[:, n_feat + 1] = b_lag1 - b_lag7
+            with np.errstate(divide="ignore", invalid="ignore"):
+                feats[:, n_feat + 2] = np.where(v30 != 0.0, v7 / v30, 1.0)
+
+        pred = np.asarray(model.predict(feats), dtype=np.float64)
+        pred = pred + rng.normal(0.0, sigma, size=n_sims)
+        all_paths[:, step - 1] = pred
+
+        prev_brent = brent_buf[:, -1]
+        prev_wti   = wti_buf[:, -1]
+        pred_wti   = pred - spread
+        brent_ret_new = np.where(prev_brent != 0, (pred - prev_brent) / prev_brent, 0.0)
+        wti_ret_new   = np.where(prev_wti != 0, (pred_wti - prev_wti) / prev_wti, 0.0)
+
+        brent_buf     = np.column_stack([brent_buf, pred])
+        wti_buf       = np.column_stack([wti_buf, pred_wti])
+        brent_ret_buf = np.column_stack([brent_ret_buf, brent_ret_new])
+        wti_ret_buf   = np.column_stack([wti_ret_buf, wti_ret_new])
 
     # Aggregate across simulations
     forecasts: list[dict] = []
     for step_i in range(forecast_days):
-        prices = sorted(p[step_i] for p in all_paths)
+        col = all_paths[:, step_i]
+        p10, p25, p50, p75, p90 = np.percentile(col, [10, 25, 50, 75, 90])
         forecasts.append({
             "forecast_date":       estimate_future_trading_date(last_date, step_i + 1),
-            "predicted_brent_usd": round(_percentile(prices, 0.50), 4),
+            "predicted_brent_usd": round(float(p50), 4),
             "trading_days_ahead":  step_i + 1,
-            "p10":                 round(_percentile(prices, 0.10), 4),
-            "p25":                 round(_percentile(prices, 0.25), 4),
-            "p75":                 round(_percentile(prices, 0.75), 4),
-            "p90":                 round(_percentile(prices, 0.90), 4),
+            "p10":                 round(float(p10), 4),
+            "p25":                 round(float(p25), 4),
+            "p75":                 round(float(p75), 4),
+            "p90":                 round(float(p90), 4),
             "source_date":         last_date,
         })
     return forecasts

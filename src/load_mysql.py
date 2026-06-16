@@ -20,6 +20,10 @@ SQL_DIR     = _SCRIPT_DIR.parent / "sql"
 
 _METADATA_TABLES = {"data_dictionary", "source_catalog"}
 
+# Rows per executemany batch. Larger batches reduce round-trips to MySQL;
+# 5000 is a good balance for these datasets without exceeding max_allowed_packet.
+INSERT_BATCH_SIZE = 5000
+
 DATE_COLUMNS = {
     "trade_date",
     "event_date",
@@ -118,7 +122,7 @@ def load_csv(cursor, table: str, path: Path, dtypes: dict[str, str], replace: bo
     total = 0
     for values in iter_csv_rows(path, columns):
         batch.append(values)
-        if len(batch) >= 1000:
+        if len(batch) >= INSERT_BATCH_SIZE:
             cursor.executemany(insert_sql, batch)
             total += len(batch)
             batch.clear()
