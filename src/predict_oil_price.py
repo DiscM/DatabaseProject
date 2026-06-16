@@ -25,7 +25,8 @@ from pathlib import Path
 
 import joblib
 
-from features import compute_derived, to_float_strict as to_float
+from features import compute_derived
+from features import to_float_strict as to_float
 
 
 def estimate_future_trading_date(base_date_str: str, trading_days_ahead: int) -> str:
@@ -118,23 +119,40 @@ def monte_carlo_forecast(
                 wti_ret   = wti_ret_buf[-1]
                 row: dict[str, float] = {}
                 for col in feature_columns:
-                    if   col == "brent_price_usd":     row[col] = brent
-                    elif col == "wti_price_usd":       row[col] = wti
-                    elif col == "brent_return":        row[col] = brent_ret
-                    elif col == "wti_return":          row[col] = wti_ret
-                    elif col == "brent_lag_1":         row[col] = _buf_get(brent_buf, 1)
-                    elif col == "brent_lag_3":         row[col] = _buf_get(brent_buf, 3)
-                    elif col == "brent_lag_7":         row[col] = _buf_get(brent_buf, 7)
-                    elif col == "wti_lag_1":           row[col] = _buf_get(wti_buf, 1)
-                    elif col == "wti_lag_3":           row[col] = _buf_get(wti_buf, 3)
-                    elif col == "wti_lag_7":           row[col] = _buf_get(wti_buf, 7)
-                    elif col == "brent_volatility_7d": row[col] = _rolling_std(brent_ret_buf[-7:])
-                    elif col == "brent_volatility_30d":row[col] = _rolling_std(brent_ret_buf[-30:])
-                    elif col == "wti_volatility_7d":   row[col] = _rolling_std(wti_ret_buf[-7:])
-                    elif col == "wti_volatility_30d":  row[col] = _rolling_std(wti_ret_buf[-30:])
-                    elif col == "brent_wti_spread":    row[col] = brent - wti
-                    elif col in ("event_severity", "event_flag"): row[col] = 0.0
-                    else:                              row[col] = anchor.get(col, 0.0)
+                    if col == "brent_price_usd":
+                        row[col] = brent
+                    elif col == "wti_price_usd":
+                        row[col] = wti
+                    elif col == "brent_return":
+                        row[col] = brent_ret
+                    elif col == "wti_return":
+                        row[col] = wti_ret
+                    elif col == "brent_lag_1":
+                        row[col] = _buf_get(brent_buf, 1)
+                    elif col == "brent_lag_3":
+                        row[col] = _buf_get(brent_buf, 3)
+                    elif col == "brent_lag_7":
+                        row[col] = _buf_get(brent_buf, 7)
+                    elif col == "wti_lag_1":
+                        row[col] = _buf_get(wti_buf, 1)
+                    elif col == "wti_lag_3":
+                        row[col] = _buf_get(wti_buf, 3)
+                    elif col == "wti_lag_7":
+                        row[col] = _buf_get(wti_buf, 7)
+                    elif col == "brent_volatility_7d":
+                        row[col] = _rolling_std(brent_ret_buf[-7:])
+                    elif col == "brent_volatility_30d":
+                        row[col] = _rolling_std(brent_ret_buf[-30:])
+                    elif col == "wti_volatility_7d":
+                        row[col] = _rolling_std(wti_ret_buf[-7:])
+                    elif col == "wti_volatility_30d":
+                        row[col] = _rolling_std(wti_ret_buf[-30:])
+                    elif col == "brent_wti_spread":
+                        row[col] = brent - wti
+                    elif col in ("event_severity", "event_flag"):
+                        row[col] = 0.0
+                    else:
+                        row[col] = anchor.get(col, 0.0)
                 feature_vec = [row[col] for col in feature_columns] + compute_derived(row)
 
             pred_brent  = float(model.predict([feature_vec])[0])
@@ -205,7 +223,7 @@ def apply_momentum_blend(
     xs = list(range(n))
     xm = sum(xs) / n
     ym = sum(prices) / n
-    slope = sum((x - xm) * (y - ym) for x, y in zip(xs, prices)) / \
+    slope = sum((x - xm) * (y - ym) for x, y in zip(xs, prices, strict=False)) / \
             sum((x - xm) ** 2 for x in xs)
     last_price = prices[-1]
 

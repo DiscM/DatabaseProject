@@ -27,7 +27,7 @@ for _p in (_SRC, _VIZ):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from pipeline import run_train, run_predict, run_visualize
+from pipeline import run_predict, run_train, run_visualize  # noqa: E402
 
 
 def _banner(step: int, total: int, label: str) -> None:

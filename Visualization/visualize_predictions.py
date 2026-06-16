@@ -25,51 +25,50 @@ from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
 
-
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
 
 def _range_buttons() -> dict:
     """Week-by-week through All-time range selector buttons."""
-    return dict(
-        buttons=[
-            dict(count=7,  label="1W",  step="day",   stepmode="backward"),
-            dict(count=14, label="2W",  step="day",   stepmode="backward"),
-            dict(count=1,  label="1M",  step="month", stepmode="backward"),
-            dict(count=3,  label="3M",  step="month", stepmode="backward"),
-            dict(count=6,  label="6M",  step="month", stepmode="backward"),
-            dict(count=1,  label="1Y",  step="year",  stepmode="backward"),
-            dict(step="all", label="All"),
+    return {
+        "buttons": [
+            {"count": 7,  "label": "1W",  "step": "day",   "stepmode": "backward"},
+            {"count": 14, "label": "2W",  "step": "day",   "stepmode": "backward"},
+            {"count": 1,  "label": "1M",  "step": "month", "stepmode": "backward"},
+            {"count": 3,  "label": "3M",  "step": "month", "stepmode": "backward"},
+            {"count": 6,  "label": "6M",  "step": "month", "stepmode": "backward"},
+            {"count": 1,  "label": "1Y",  "step": "year",  "stepmode": "backward"},
+            {"step": "all", "label": "All"},
         ],
-        bgcolor="#f0f2f6",
-        activecolor="#4a90d9",
-    )
+        "bgcolor": "#f0f2f6",
+        "activecolor": "#4a90d9",
+    }
 
 
 def _time_xaxis(title: str = "Date", x_range: list | None = None) -> dict:
     """Standard date x-axis with range selector and slider."""
-    axis = dict(
-        title=title,
-        type="date",
-        rangeselector=_range_buttons(),
-        rangeslider=dict(visible=True, thickness=0.05),
-        showgrid=True,
-        gridcolor="#e5e5e5",
-    )
+    axis = {
+        "title": title,
+        "type": "date",
+        "rangeselector": _range_buttons(),
+        "rangeslider": {"visible": True, "thickness": 0.05},
+        "showgrid": True,
+        "gridcolor": "#e5e5e5",
+    }
     if x_range is not None:
         axis["range"] = x_range
     return axis
 
 
 def _base_layout(**kwargs) -> dict:
-    base = dict(
-        template="plotly_white",
-        hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        margin=dict(t=80, b=60),
-        plot_bgcolor="#fafafa",
-    )
+    base = {
+        "template": "plotly_white",
+        "hovermode": "x unified",
+        "legend": {"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "right", "x": 1},
+        "margin": {"t": 80, "b": 60},
+        "plot_bgcolor": "#fafafa",
+    }
     base.update(kwargs)
     return base
 
@@ -157,20 +156,20 @@ def _add_forecast_traces(
     if bridge_p10 is not None:
         fig.add_trace(go.Scatter(
             x=bridge_dates, y=bridge_p90, mode="lines",
-            line=dict(width=0), showlegend=False, hoverinfo="skip", name="_p90",
+            line={"width": 0}, showlegend=False, hoverinfo="skip", name="_p90",
         ))
         fig.add_trace(go.Scatter(
-            x=bridge_dates, y=bridge_p10, mode="lines", line=dict(width=0),
+            x=bridge_dates, y=bridge_p10, mode="lines", line={"width": 0},
             fill="tonexty", fillcolor="rgba(255,140,0,0.10)",
             showlegend=True, name="P10-P90 Range",
             hovertemplate="%{x|%Y-%m-%d}<br>P10: $%{y:.2f}<extra></extra>",
         ))
         fig.add_trace(go.Scatter(
             x=bridge_dates, y=bridge_p75, mode="lines",
-            line=dict(width=0), showlegend=False, hoverinfo="skip", name="_p75",
+            line={"width": 0}, showlegend=False, hoverinfo="skip", name="_p75",
         ))
         fig.add_trace(go.Scatter(
-            x=bridge_dates, y=bridge_p25, mode="lines", line=dict(width=0),
+            x=bridge_dates, y=bridge_p25, mode="lines", line={"width": 0},
             fill="tonexty", fillcolor="rgba(255,140,0,0.22)",
             showlegend=True, name="P25-P75 Range",
             hovertemplate="%{x|%Y-%m-%d}<br>P25: $%{y:.2f}<extra></extra>",
@@ -178,16 +177,16 @@ def _add_forecast_traces(
     fig.add_trace(go.Scatter(
         x=bridge_dates, y=bridge_median,
         name="Forecast Median",
-        line=dict(color="darkorange", width=2.5, dash="dash"),
+        line={"color": "darkorange", "width": 2.5, "dash": "dash"},
         mode="lines+markers",
-        marker=dict(size=6, color="darkorange", symbol="circle"),
+        marker={"size": 6, "color": "darkorange", "symbol": "circle"},
         hovertemplate="%{x|%Y-%m-%d}<br>Median: $%{y:.2f}<extra></extra>",
     ))
     fig.add_vrect(
         x0=last_test_date, x1=forecast_end,
         fillcolor="darkorange", opacity=0.04, layer="below", line_width=0,
-        annotation=dict(text="Forecast Window",
-                        font=dict(size=11, color="darkorange"), align="left"),
+        annotation={"text": "Forecast Window",
+                        "font": {"size": 11, "color": "darkorange"}, "align": "left"},
         annotation_position="top left",
     )
 
@@ -210,7 +209,7 @@ def _chart_scatter(
         x=df[actual_col],
         y=df[predicted_col],
         mode="markers",
-        marker=dict(color="seagreen", opacity=0.45, size=6),
+        marker={"color": "seagreen", "opacity": 0.45, "size": 6},
         name="Test Samples",
         hovertemplate="Actual: $%{x:.2f}<br>Predicted: $%{y:.2f}<extra></extra>",
     ))
@@ -218,13 +217,13 @@ def _chart_scatter(
         x=[min_val, max_val],
         y=[min_val, max_val],
         mode="lines",
-        line=dict(color="crimson", dash="dash", width=1.5),
+        line={"color": "crimson", "dash": "dash", "width": 1.5},
         name="Perfect Prediction (y = x)",
     ))
     fig.update_layout(**_base_layout(
         title=f"Prediction Accuracy: Actual vs Predicted ({horizon_label})",
-        xaxis=dict(title="Actual Price (USD)", showgrid=True, gridcolor="#e5e5e5"),
-        yaxis=dict(title="Predicted Price (USD)", showgrid=True, gridcolor="#e5e5e5"),
+        xaxis={"title": "Actual Price (USD)", "showgrid": True, "gridcolor": "#e5e5e5"},
+        yaxis={"title": "Predicted Price (USD)", "showgrid": True, "gridcolor": "#e5e5e5"},
         hovermode="closest",
     ))
     return fig
@@ -250,21 +249,21 @@ def _chart_model_vs_baseline(
         x=df["market_date"],
         y=df[actual_col],
         name="Actual Brent Price",
-        line=dict(color="royalblue", width=2),
+        line={"color": "royalblue", "width": 2},
         hovertemplate="%{x|%Y-%m-%d}<br>Actual: $%{y:.2f}<extra></extra>",
     ))
     fig.add_trace(go.Scatter(
         x=df["market_date"],
         y=df[predicted_col],
         name=f"Model Prediction ({horizon_label})",
-        line=dict(color="darkorange", width=2),
+        line={"color": "darkorange", "width": 2},
         hovertemplate="%{x|%Y-%m-%d}<br>Model: $%{y:.2f}<extra></extra>",
     ))
     fig.add_trace(go.Scatter(
         x=df["market_date"],
         y=df["baseline_previous_brent"],
         name="Baseline (Current Day Price)",
-        line=dict(color="gray", width=1.5, dash="dash"),
+        line={"color": "gray", "width": 1.5, "dash": "dash"},
         opacity=0.65,
         hovertemplate="%{x|%Y-%m-%d}<br>Baseline: $%{y:.2f}<extra></extra>",
     ))
@@ -288,7 +287,7 @@ def _chart_model_vs_baseline(
     fig.update_layout(**_base_layout(
         title=f"Model vs Baseline vs Actual -- {horizon_label} (Test Set + Forecast)",
         xaxis=_time_xaxis(x_range=[x_start, x_end]),
-        yaxis=dict(title="Price (USD)", showgrid=True, gridcolor="#e5e5e5"),
+        yaxis={"title": "Price (USD)", "showgrid": True, "gridcolor": "#e5e5e5"},
     ))
     return fig
 

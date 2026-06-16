@@ -7,12 +7,19 @@ from datetime import date
 from pathlib import Path
 
 import joblib
+import numpy as np
+import pandas as pd
 from sklearn.linear_model import Ridge
-from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, mean_squared_error, r2_score
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_absolute_percentage_error,
+    mean_squared_error,
+    r2_score,
+)
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from features import FEATURE_COLUMNS, COMPUTED_FEATURE_NAMES, compute_derived, to_float
+from features import COMPUTED_FEATURE_NAMES, FEATURE_COLUMNS, compute_derived, to_float
 
 
 def read_market_rows(path: Path) -> list[dict[str, str]]:
@@ -40,6 +47,32 @@ def build_examples(
         y_rows.append(future_brent)
         dates.append(rows[idx + horizon]["market_date"])
     return x_rows, y_rows, dates
+
+
+def _build_feature_matrix(df: pd.DataFrame) -> np.ndarray:
+    """Construct the full feature matrix X once (vectorized pandas operations).
+
+    Returns a 2-d float64 array with shape (n_rows, 23):
+        20 raw features + 3 computed.
+    Rows with any missing feature value are dropped.
+    """
+    prices = df["brent_price_usd"].values.astype(np.float64)
+    lag1   = df["brent_lag_1"].values.astype(np.float64)
+    lag7   = df["brent_lag_7"].values.astype(np.float64)
+    vol7   = df["brent_volatility_7d"].values.astype(np.float64)
+    vol30  = df["brent_volatility_30d"].values.astype(np.float64)
+
+    raw = df[FEATURE_COLUMNS].to_numpy(dtype=np.float64)
+
+    momentum = prices - lag7
+    accel    = lag1 - lag7
+    with np.errstate(divide="ignore", invalid="ignore"):
+        regime = np.where(vol30 != 0.0, vol7 / vol30, 1.0)
+
+    x_mat = np.column_stack([raw, momentum, accel, regime])
+
+    valid = ~np.isnan(x_mat).any(axis=1)
+    return x_mat[valid], df["market_date"].values[valid].tolist()
 
 
 def split_chronological(
@@ -74,8 +107,13 @@ def write_predictions(
         writer = csv.writer(handle)
         writer.writerow(["market_date", "actual_brent_future", "predicted_brent_future",
                          "baseline_previous_brent", "horizon_days"])
-        for d, a, p, b in zip(dates, actual, predicted, baseline):
+        for d, a, p, b in zip(dates, actual, predicted, baseline, strict=False):
             writer.writerow([d, a, p, b, horizon])
+
+
+def _valid_length(n: int, h: int) -> int:
+    """Number of valid (X, y) pairs for horizon h with n source rows."""
+    return n - h
 
 
 def train_models(
@@ -85,39 +123,56 @@ def train_models(
     test_ratio: float = 0.2,
     max_horizon: int = 10,
 ) -> None:
-    rows = read_market_rows(market_csv)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    df = pd.read_csv(market_csv, encoding="utf-8-sig").sort_values("market_date")
+    prices = df["brent_price_usd"].to_numpy(dtype=np.float64)
+    x_full, date_list = _build_feature_matrix(df)
+    n = len(x_full)
+
+    if n < 50:
+        raise SystemExit("Not enough valid rows — check dataset.")
+
+    h1_valid = _valid_length(n, 1)
+    h1_split = max(1, int(h1_valid * (1.0 - test_ratio)))
+    h1_train_x = x_full[:h1_split]
+
+    scaler = StandardScaler().fit(h1_train_x)
+    x_scaled = scaler.transform(x_full)
 
     per_horizon: dict[int, dict] = {}
     h1_test_dates = h1_test_y = h1_test_preds = h1_baseline = None
-    h1_train_dates = h1_train_metrics = h1_baseline_metrics = None
+    h1_train_metrics = h1_baseline_metrics = None
 
     print(f"Training {max_horizon} direct-horizon Ridge models "
-          f"(alpha={alpha})  ...")
+          f"(alpha={alpha}) on {n} feature rows ...")
 
     for h in range(1, max_horizon + 1):
-        x_rows, y_rows, dates = build_examples(rows, horizon=h)
-        if len(x_rows) < 50:
-            print(f"  h={h:02d}: not enough rows ({len(x_rows)}), skipping")
+        valid = _valid_length(n, h)
+        if valid < 50:
+            print(f"  h={h:02d}: not enough rows ({valid}), skipping")
             continue
 
-        train_x, train_y, train_dates, test_x, test_y, test_dates = split_chronological(
-            x_rows, y_rows, dates, test_ratio
-        )
+        y = prices[h:n]
+        split_idx = max(1, int(valid * (1.0 - test_ratio)))
 
-        model = Pipeline([
-            ("scaler",    StandardScaler()),
-            ("regressor", Ridge(alpha=alpha)),
-        ])
+        x_h = x_scaled[:valid]
+        train_x = x_h[:split_idx]
+        test_x  = x_h[split_idx:valid]
+        train_y = y[:split_idx]
+        test_y  = y[split_idx:valid]
+
+        model = Ridge(alpha=alpha)
         model.fit(train_x, train_y)
 
         test_preds  = model.predict(test_x).tolist()
         train_preds = model.predict(train_x).tolist()
-        m_test  = metrics(test_y,  test_preds)
-        m_train = metrics(train_y, train_preds)
+        m_test  = metrics(test_y.tolist(),  test_preds)
+        m_train = metrics(train_y.tolist(), train_preds)
 
         model_file = output_dir / f"oil_price_model_h{h}.joblib"
-        joblib.dump(model, model_file)
+        pipeline = Pipeline([("scaler", scaler), ("regressor", model)])
+        joblib.dump(pipeline, model_file)
         model_file_rel = model_file.relative_to(Path.cwd()) if model_file.is_absolute() else model_file
 
         per_horizon[h] = {
@@ -128,18 +183,17 @@ def train_models(
             "mape_pct":        round(m_test["mape_pct"], 4),
             "train_rows":      len(train_x),
             "test_rows":       len(test_x),
-            "test_date_range": [test_dates[0], test_dates[-1]],
+            "test_date_range": [date_list[split_idx], date_list[valid - 1]],
         }
 
         if h == 1:
-            joblib.dump(model, output_dir / "oil_price_model.joblib")
-            h1_test_dates    = test_dates
-            h1_test_y        = test_y
+            joblib.dump(pipeline, output_dir / "oil_price_model.joblib")
+            h1_test_dates    = list(date_list[split_idx:valid])
+            h1_test_y        = test_y.tolist()
             h1_test_preds    = test_preds
-            h1_baseline      = [row[0] for row in test_x]
-            h1_train_dates   = train_dates
+            h1_baseline      = test_x[:, 0].tolist()
             h1_train_metrics = m_train
-            h1_baseline_metrics = metrics(test_y, h1_baseline)
+            h1_baseline_metrics = metrics(test_y.tolist(), h1_baseline)
 
         print(f"  h={h:02d}: RMSE={m_test['rmse']:.3f} USD  "
               f"MAE={m_test['mae']:.3f} USD  R²={m_test['r2']:.4f}")
@@ -152,7 +206,8 @@ def train_models(
         h1_test_dates, h1_test_y, h1_test_preds, h1_baseline, horizon=1,
     )
 
-    _rel = lambda p: str(p.relative_to(Path.cwd()) if p.is_absolute() else p)
+    def _rel(p):
+        return str(p.relative_to(Path.cwd()) if p.is_absolute() else p)
     artifact = {
         "model_type":              "sklearn.pipeline.Pipeline(StandardScaler, Ridge)",
         "strategy":                "direct_multi_step",
@@ -167,7 +222,7 @@ def train_models(
         "per_horizon":             per_horizon,
         "train_rows":              per_horizon[1]["train_rows"],
         "test_rows":               per_horizon[1]["test_rows"],
-        "train_date_range":        [h1_train_dates[0], h1_train_dates[-1]],
+        "train_date_range":        [date_list[0], date_list[split_idx - 1]],
         "test_date_range":         per_horizon[1]["test_date_range"],
         "train_metrics":           h1_train_metrics,
         "test_metrics":            {k: v for k, v in per_horizon[1].items()

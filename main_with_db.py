@@ -34,10 +34,9 @@ for _p in (_SRC, _VIZ):
         sys.path.insert(0, _p)
 
 # ── Local imports ─────────────────────────────────────────────────────────────
-from db_config  import get_mysql_config
-import load_mysql as _loader
-from pipeline   import run_train, run_predict, run_visualize
-
+import load_mysql as _loader  # noqa: E402
+from db_config import get_mysql_config  # noqa: E402
+from pipeline import run_predict, run_train, run_visualize  # noqa: E402
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -95,7 +94,7 @@ def wait_for_mysql_ready(
     mysql = _loader.require_connector()
     deadline = time.time() + timeout_s
     attempt  = 0
-    print(f"  Waiting for MySQL to finish initialising ...")
+    print("  Waiting for MySQL to finish initialising ...")
     while time.time() < deadline:
         attempt += 1
         try:

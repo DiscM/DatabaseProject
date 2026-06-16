@@ -3,17 +3,16 @@ from __future__ import annotations
 import argparse
 import csv
 import re
-from collections import defaultdict
-from pathlib import Path
-from typing import Iterable
-
 import sys
+from collections import defaultdict
+from collections.abc import Iterable
+from pathlib import Path
 from pathlib import Path as _Path
+
 if str(_Path(__file__).parent) not in sys.path:
     sys.path.insert(0, str(_Path(__file__).parent))
 
 from db_config import get_mysql_config
-
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 DATASET_DIR = _SCRIPT_DIR.parent / "datasets"

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from train_oil_model import train_models
-from predict_oil_price import run_forecast
 from visualize_predictions import create_visualizations
+
+from predict_oil_price import run_forecast
+from train_oil_model import train_models
 
 
 def run_train(
