@@ -65,13 +65,20 @@ After loading the CSV tables, `src/load_mysql.py` applies `sql/analytics_views.s
 ```text
 main.py                    One-command pipeline runner (no MySQL required)
 main_with_db.py            One-command pipeline runner WITH MySQL integration
-src/db_config.py           MySQL connection config (reads .env)
-src/load_mysql.py          CSV-to-MySQL loader with inferred table schemas
-src/train_oil_model.py     Ridge training (10 horizons, h=1..10)
-src/predict_oil_price.py   Monte Carlo stochastic 10-day forecast
+src/
+  db_config.py             MySQL connection config (reads .env)
+  features.py              Shared feature constants & helpers
+  load_mysql.py            CSV-to-MySQL loader with inferred table schemas
+  pipeline.py              Shared pipeline orchestration
+  train_oil_model.py       Ridge training (10 horizons, h=1..10)
+  predict_oil_price.py     Monte Carlo stochastic 10-day forecast
 Visualization/
   visualize_predictions.py Interactive Plotly charts (scatter + forecast fan)
 compile_notebook.py        Regenerates oil_news_project_demo.ipynb from sources
+tests/                     Pytest test suite (52 tests)
+ruff.toml                  Ruff linter configuration
+pyrightconfig.json         Pyright type checker configuration
+.github/workflows/ci.yml   GitHub Actions CI workflow
 datasets/                  Source CSV files
 docs/database_schema.md    Full column-level operational and dimensional ERDs
 sql/analytics_views.sql    MySQL views for analysis-ready joins
@@ -159,9 +166,9 @@ Current benchmark (h=1):
 
 | Metric | Training | Test | Previous-price baseline |
 |--------|----------|------|-------------------------|
-| MAE    | 1.080 USD | 1.118 USD | 1.113 USD |
-| RMSE   | 1.567 USD | 1.516 USD | 1.536 USD |
-| MAPE   | 1.515% | 1.463% | 1.457% |
+| MAE    | 1.080 USD | 1.121 USD | 1.113 USD |
+| RMSE   | 1.567 USD | 1.519 USD | 1.536 USD |
+| MAPE   | 1.515% | 1.467% | 1.457% |
 | R-squared | 0.996 | 0.967 | 0.966 |
 
 ### 5. Generate the Forecast
@@ -213,6 +220,38 @@ The export script prints `output/presentations/oil_news_project_presentation.htm
 with headless Chrome or Edge, writes
 `output/presentations/oil_news_project_presentation_from_html.pdf`, verifies the
 expected 9-page deck text, and removes its temporary browser profile.
+
+## Code Quality
+
+### Tests
+
+```powershell
+python -m pytest tests/ -v
+```
+
+52 tests covering feature construction, model training, forecast helpers, and
+MySQL loader utilities. Run from the project root with `PYTHONPATH=src` on Linux/macOS.
+
+### Linting
+
+```powershell
+pip install ruff
+ruff check src/ main.py main_with_db.py compile_notebook.py
+```
+
+Formatting and import order can be auto-fixed with `ruff check --fix`.
+
+### Type Checking
+
+```powershell
+pip install pyright
+pyright
+```
+
+### Continuous Integration
+
+Every push and pull request runs lint, type check, and tests via
+`.github/workflows/ci.yml`.
 
 
 

@@ -72,7 +72,7 @@ def _build_feature_matrix(df: pd.DataFrame) -> tuple[np.ndarray, list[str]]:
     x_mat = np.column_stack([raw, momentum, accel, regime])
 
     valid = ~np.isnan(x_mat).any(axis=1)
-    return x_mat[valid], df["market_date"].values[valid].tolist()
+    return x_mat[valid], df["market_date"].values[valid].tolist()  # type: ignore
 
 
 def split_chronological(
