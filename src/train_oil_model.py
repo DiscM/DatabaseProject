@@ -162,7 +162,10 @@ def train_models(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     x_full, prices, date_list = _load_feature_data(market_csv, output_dir, use_cache)
+    x_full = np.asarray(x_full, dtype=np.float64)
+    prices = np.asarray(prices, dtype=np.float64)
     n = len(x_full)
+    n_features = int(x_full.shape[1])
 
     if n < 50:
         raise SystemExit("Not enough valid rows — check dataset.")
@@ -220,7 +223,7 @@ def train_models(
             "train_mae":       round(m_train["mae"],      4),
             "train_r2":        round(m_train["r2"],       6),
             "train_mape_pct":  round(m_train["mape_pct"], 4),
-            "n_features":      train_x.shape[1],
+            "n_features":      n_features,
             "train_rows":      len(train_x),
             "test_rows":       len(test_x),
             "test_date_range": [date_list[split_idx], date_list[valid - 1]],
