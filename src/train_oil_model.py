@@ -43,16 +43,16 @@ def build_examples(
         all_features = raw_features + computed
         if future_brent is None or any(v is None for v in all_features):
             continue
-        x_rows.append([float(v) for v in all_features])
+        x_rows.append(all_features)  # type: ignore[arg-type]
         y_rows.append(future_brent)
         dates.append(rows[idx + horizon]["market_date"])
     return x_rows, y_rows, dates
 
 
-def _build_feature_matrix(df: pd.DataFrame) -> np.ndarray:
+def _build_feature_matrix(df: pd.DataFrame) -> tuple[np.ndarray, list[str]]:
     """Construct the full feature matrix X once (vectorized pandas operations).
 
-    Returns a 2-d float64 array with shape (n_rows, 23):
+    Returns (ndarray, date_list) where the array has shape (n_rows, 23):
         20 raw features + 3 computed.
     Rows with any missing feature value are dropped.
     """
@@ -87,10 +87,10 @@ def split_chronological(
 
 def metrics(actual: list[float], predicted: list[float]) -> dict[str, float]:
     return {
-        "mae":      mean_absolute_error(actual, predicted),
-        "rmse":     mean_squared_error(actual, predicted) ** 0.5,
-        "mape_pct": mean_absolute_percentage_error(actual, predicted) * 100,
-        "r2":       r2_score(actual, predicted),
+        "mae":      float(mean_absolute_error(actual, predicted)),
+        "rmse":     float(mean_squared_error(actual, predicted) ** 0.5),
+        "mape_pct": float(mean_absolute_percentage_error(actual, predicted) * 100),
+        "r2":       float(r2_score(actual, predicted)),
     }
 
 
@@ -191,7 +191,7 @@ def train_models(
             h1_test_dates    = list(date_list[split_idx:valid])
             h1_test_y        = test_y.tolist()
             h1_test_preds    = test_preds
-            h1_baseline      = test_x[:, 0].tolist()
+            h1_baseline      = [float(row[0]) for row in test_x]
             h1_train_metrics = m_train
             h1_baseline_metrics = metrics(test_y.tolist(), h1_baseline)
 
@@ -201,6 +201,10 @@ def train_models(
     if not per_horizon:
         raise SystemExit("No horizon models trained — check dataset size.")
 
+    assert h1_test_dates is not None
+    assert h1_test_y is not None
+    assert h1_test_preds is not None
+    assert h1_baseline is not None
     write_predictions(
         output_dir / "test_predictions.csv",
         h1_test_dates, h1_test_y, h1_test_preds, h1_baseline, horizon=1,

@@ -197,7 +197,7 @@ def apply_momentum_blend(
     sorted_rows: list[dict[str, str]],
     momentum_window: int = 10,
     blend_weight: float = 0.4,
-) -> list[dict]:
+) -> tuple[list[dict], float]:
     """
     Correct for Ridge's mean-reversion bias by blending each step's MC median
     with a linear-trend extrapolation fitted to the last `momentum_window`
