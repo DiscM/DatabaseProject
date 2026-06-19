@@ -3,6 +3,10 @@
 ## [Unreleased]
 
 ### Added
+- **`src/fetch_market_data.py`** — live market data fetcher using yfinance. Downloads daily Brent (`BZ=F`), WTI (`CL=F`), DXY (`DX=F`), and VIX (`^VIX`) prices and builds the full feature row format required by the Monte Carlo forecast.
+- **`src/web_api.py`** — FastAPI web server with two routes: `GET /forecast` (JSON) and `GET /` (HTML dashboard with Plotly chart). Loads the trained model at startup, fetches live data on each request, and caches results for 5 minutes.
+- **`templates/dashboard.html`** — embedded HTML dashboard showing current prices, a 10-day forecast fan chart, and a percentile table.
+- `yfinance>=1.4.0`, `fastapi>=0.100.0`, `uvicorn>=0.20.0` to `requirements.txt`.
 - **`src/features.py`** — shared feature constants (`FEATURE_COLUMNS`, `COMPUTED_FEATURE_NAMES`) and helpers (`to_float`, `to_float_strict`, `compute_derived`). Both `train_oil_model.py` and `predict_oil_price.py` now import from this single source, eliminating duplicated code.
 - **`src/pipeline.py`** — shared pipeline orchestration (`run_train`, `run_predict`, `run_visualize`). Both entry points (`main.py`, `main_with_db.py`) import from this module instead of from each other.
 - **Test suite** — 52 pytest tests covering features, training, forecast helpers, and MySQL loader utilities.
