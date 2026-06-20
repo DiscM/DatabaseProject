@@ -9,6 +9,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import Ridge
 from sklearn.metrics import (
     mean_absolute_error,
@@ -292,6 +293,115 @@ def train_models(
               f"R2: {per_horizon[max_horizon]['r2']:.4f}")
 
 
+def train_models_rf(
+    market_csv: Path,
+    output_dir: Path,
+    test_ratio: float = 0.2,
+    max_horizon: int = 10,
+    use_cache: bool = True,
+    n_estimators: int = 250,
+) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    x_full, prices, date_list = _load_feature_data(market_csv, output_dir, use_cache)
+    x_full = np.asarray(x_full, dtype=np.float64)
+    prices = np.asarray(prices, dtype=np.float64)
+    n = len(x_full)
+    n_features = int(x_full.shape[1])
+
+    if n < 50:
+        raise SystemExit("Not enough valid rows — check dataset.")
+
+    per_horizon: dict[int, dict] = {}
+    h1_baseline = None
+    h1_train_metrics = h1_baseline_metrics = None
+    h1_model: RandomForestRegressor | None = None
+
+    print(f"Training {max_horizon} direct-horizon Random Forest models "
+          f"(n_estimators={n_estimators}) on {n} feature rows ...")
+
+    for h in range(1, max_horizon + 1):
+        valid = _valid_length(n, h)
+        if valid < 50:
+            print(f"  h={h:02d}: not enough rows ({valid}), skipping")
+            continue
+
+        y = prices[h:n]
+        split_idx = max(1, int(valid * (1.0 - test_ratio)))
+
+        x_h = x_full[:valid]
+        train_x = x_h[:split_idx]
+        test_x  = x_h[split_idx:valid]
+        train_y = y[:split_idx]
+        test_y  = y[split_idx:valid]
+
+        model = RandomForestRegressor(n_estimators=n_estimators, random_state=42)
+        model.fit(train_x, train_y)
+
+        test_preds  = model.predict(test_x).tolist()
+        train_preds = model.predict(train_x).tolist()
+        m_test  = metrics(test_y.tolist(),  test_preds)
+        m_train = metrics(train_y.tolist(), train_preds)
+
+        model_file = output_dir / f"oil_price_model_rf_h{h}.joblib"
+        joblib.dump(model, model_file)
+        model_file_rel = model_file.relative_to(Path.cwd()) if model_file.is_absolute() else model_file
+
+        per_horizon[h] = {
+            "model_file":      str(model_file_rel),
+            "rmse":            round(m_test["rmse"],     4),
+            "mae":             round(m_test["mae"],      4),
+            "r2":              round(m_test["r2"],       6),
+            "mape_pct":        round(m_test["mape_pct"], 4),
+            "train_rmse":      round(m_train["rmse"],     4),
+            "train_mae":       round(m_train["mae"],      4),
+            "train_r2":        round(m_train["r2"],       6),
+            "train_mape_pct":  round(m_train["mape_pct"], 4),
+            "n_features":      n_features,
+            "train_rows":      len(train_x),
+            "test_rows":       len(test_x),
+            "test_date_range": [date_list[split_idx], date_list[valid - 1]],
+        }
+
+        if h == 1:
+            joblib.dump(model, output_dir / "oil_price_model_rf.joblib")
+            h1_baseline      = [float(row[0]) for row in test_x]
+            h1_train_metrics = m_train
+            h1_baseline_metrics = metrics(test_y.tolist(), h1_baseline)
+            h1_model         = model
+
+        print(f"  h={h:02d}: RMSE={m_test['rmse']:.3f} USD  "
+              f"MAE={m_test['mae']:.3f} USD  R²={m_test['r2']:.4f}")
+
+    if not per_horizon:
+        raise SystemExit("No RF models trained — check dataset size.")
+
+    assert h1_model is not None
+    assert h1_baseline is not None
+
+    # Append RF metadata to the existing Ridge artifact
+    artifact_path = output_dir / "oil_price_model.json"
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8")) if artifact_path.exists() else {}
+
+    artifact["rf_available"] = True
+    artifact["rf_model_file"] = str(_rel(output_dir / "oil_price_model_rf.joblib"))
+    artifact["rf_n_estimators"] = n_estimators
+    artifact["rf_per_horizon"] = per_horizon
+    artifact["rf_test_metrics"] = {k: v for k, v in per_horizon[1].items()
+                                    if k in ("rmse", "mae", "r2", "mape_pct")}
+    artifact["rf_train_metrics"] = h1_train_metrics
+    artifact["rf_baseline_metrics"] = h1_baseline_metrics
+
+    (artifact_path).write_text(json.dumps(artifact, indent=2), encoding="utf-8")
+
+    print(f"\nSaved {len(per_horizon)} RF models to {output_dir}/")
+    print(f"h=1  test RMSE : {per_horizon[1]['rmse']:.3f} USD   R2: {per_horizon[1]['r2']:.4f}")
+    if max_horizon in per_horizon:
+        print(f"h={max_horizon:02d} test RMSE : "
+              f"{per_horizon[max_horizon]['rmse']:.3f} USD   "
+              f"R2: {per_horizon[max_horizon]['r2']:.4f}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Train one Ridge model per forecast horizon (direct multi-step strategy)."
@@ -305,11 +415,21 @@ def main() -> None:
                         help="Number of horizon models to train, 1 through N (default: 10).")
     parser.add_argument("--no-cache", action="store_true",
                         help="Disable the cached feature matrix and re-parse the CSV.")
+    parser.add_argument("--rf", action="store_true",
+                        help="Also train Random Forest models for forecasting.")
+    parser.add_argument("--n-estimators", type=int, default=250,
+                        help="Number of trees per Random Forest (default: 250).")
     args = parser.parse_args()
     train_models(
         args.market_csv, args.output_dir, args.alpha, args.test_ratio,
         args.max_horizon, use_cache=not args.no_cache,
     )
+    if args.rf:
+        train_models_rf(
+            args.market_csv, args.output_dir, args.test_ratio,
+            args.max_horizon, use_cache=not args.no_cache,
+            n_estimators=args.n_estimators,
+        )
 
 
 if __name__ == "__main__":

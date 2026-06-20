@@ -3,7 +3,7 @@
   "strategy": "direct_multi_step",
   "max_horizon_trading_days": 10,
   "horizon_trading_days": 1,
-  "trained_at": "2026-06-15",
+  "trained_at": "2026-06-19",
   "source_file": "datasets/ops_market_daily.csv",
   "feature_columns": [
     "brent_price_usd",
@@ -269,5 +269,208 @@
     "rmse": 76.8727345605208,
     "mape_pct": 100.12553401642784,
     "r2": -84.15441449122204
+  },
+  "rf_available": true,
+  "rf_model_file": "model_artifacts/oil_price_model_rf.joblib",
+  "rf_n_estimators": 250,
+  "rf_per_horizon": {
+    "1": {
+      "model_file": "model_artifacts/oil_price_model_rf_h1.joblib",
+      "rmse": 1.7497,
+      "mae": 1.301,
+      "r2": 0.955884,
+      "mape_pct": 1.6916,
+      "train_rmse": 0.6103,
+      "train_mae": 0.4259,
+      "train_r2": 0.999448,
+      "train_mape_pct": 0.5992,
+      "n_features": 23,
+      "train_rows": 3236,
+      "test_rows": 810,
+      "test_date_range": [
+        "2022-12-21",
+        "2026-03-11"
+      ]
+    },
+    "2": {
+      "model_file": "model_artifacts/oil_price_model_rf_h2.joblib",
+      "rmse": 2.5043,
+      "mae": 1.8671,
+      "r2": 0.909705,
+      "mape_pct": 2.4265,
+      "train_rmse": 0.7516,
+      "train_mae": 0.5198,
+      "train_r2": 0.999162,
+      "train_mape_pct": 0.727,
+      "n_features": 23,
+      "train_rows": 3236,
+      "test_rows": 809,
+      "test_date_range": [
+        "2022-12-21",
+        "2026-03-10"
+      ]
+    },
+    "3": {
+      "model_file": "model_artifacts/oil_price_model_rf_h3.joblib",
+      "rmse": 3.0656,
+      "mae": 2.2882,
+      "r2": 0.864697,
+      "mape_pct": 2.9643,
+      "train_rmse": 0.8158,
+      "train_mae": 0.564,
+      "train_r2": 0.999013,
+      "train_mape_pct": 0.7914,
+      "n_features": 23,
+      "train_rows": 3235,
+      "test_rows": 809,
+      "test_date_range": [
+        "2022-12-20",
+        "2026-03-09"
+      ]
+    },
+    "4": {
+      "model_file": "model_artifacts/oil_price_model_rf_h4.joblib",
+      "rmse": 3.4021,
+      "mae": 2.5635,
+      "r2": 0.833356,
+      "mape_pct": 3.3258,
+      "train_rmse": 0.8599,
+      "train_mae": 0.5962,
+      "train_r2": 0.998904,
+      "train_mape_pct": 0.8344,
+      "n_features": 23,
+      "train_rows": 3234,
+      "test_rows": 809,
+      "test_date_range": [
+        "2022-12-19",
+        "2026-03-06"
+      ]
+    },
+    "5": {
+      "model_file": "model_artifacts/oil_price_model_rf_h5.joblib",
+      "rmse": 3.6792,
+      "mae": 2.7639,
+      "r2": 0.805111,
+      "mape_pct": 3.5941,
+      "train_rmse": 0.8825,
+      "train_mae": 0.6041,
+      "train_r2": 0.998846,
+      "train_mape_pct": 0.8517,
+      "n_features": 23,
+      "train_rows": 3233,
+      "test_rows": 809,
+      "test_date_range": [
+        "2022-12-16",
+        "2026-03-05"
+      ]
+    },
+    "6": {
+      "model_file": "model_artifacts/oil_price_model_rf_h6.joblib",
+      "rmse": 3.9081,
+      "mae": 2.9398,
+      "r2": 0.780102,
+      "mape_pct": 3.8235,
+      "train_rmse": 0.8827,
+      "train_mae": 0.606,
+      "train_r2": 0.998846,
+      "train_mape_pct": 0.855,
+      "n_features": 23,
+      "train_rows": 3232,
+      "test_rows": 809,
+      "test_date_range": [
+        "2022-12-15",
+        "2026-03-04"
+      ]
+    },
+    "7": {
+      "model_file": "model_artifacts/oil_price_model_rf_h7.joblib",
+      "rmse": 4.204,
+      "mae": 3.1682,
+      "r2": 0.745606,
+      "mape_pct": 4.1131,
+      "train_rmse": 0.9028,
+      "train_mae": 0.6213,
+      "train_r2": 0.998793,
+      "train_mape_pct": 0.881,
+      "n_features": 23,
+      "train_rows": 3232,
+      "test_rows": 808,
+      "test_date_range": [
+        "2022-12-15",
+        "2026-03-03"
+      ]
+    },
+    "8": {
+      "model_file": "model_artifacts/oil_price_model_rf_h8.joblib",
+      "rmse": 4.4314,
+      "mae": 3.3862,
+      "r2": 0.717336,
+      "mape_pct": 4.3968,
+      "train_rmse": 0.9144,
+      "train_mae": 0.6144,
+      "train_r2": 0.998762,
+      "train_mape_pct": 0.8751,
+      "n_features": 23,
+      "train_rows": 3231,
+      "test_rows": 808,
+      "test_date_range": [
+        "2022-12-14",
+        "2026-03-02"
+      ]
+    },
+    "9": {
+      "model_file": "model_artifacts/oil_price_model_rf_h9.joblib",
+      "rmse": 4.6863,
+      "mae": 3.5854,
+      "r2": 0.683885,
+      "mape_pct": 4.6582,
+      "train_rmse": 0.902,
+      "train_mae": 0.6091,
+      "train_r2": 0.998796,
+      "train_mape_pct": 0.8752,
+      "n_features": 23,
+      "train_rows": 3230,
+      "test_rows": 808,
+      "test_date_range": [
+        "2022-12-13",
+        "2026-02-27"
+      ]
+    },
+    "10": {
+      "model_file": "model_artifacts/oil_price_model_rf_h10.joblib",
+      "rmse": 4.8652,
+      "mae": 3.7375,
+      "r2": 0.659286,
+      "mape_pct": 4.8615,
+      "train_rmse": 0.9215,
+      "train_mae": 0.6162,
+      "train_r2": 0.998744,
+      "train_mape_pct": 0.8911,
+      "n_features": 23,
+      "train_rows": 3229,
+      "test_rows": 808,
+      "test_date_range": [
+        "2022-12-12",
+        "2026-02-26"
+      ]
+    }
+  },
+  "rf_test_metrics": {
+    "rmse": 1.7497,
+    "mae": 1.301,
+    "r2": 0.955884,
+    "mape_pct": 1.6916
+  },
+  "rf_train_metrics": {
+    "mae": 0.4258504662955795,
+    "rmse": 0.6102945212538381,
+    "mape_pct": 0.5992211262578929,
+    "r2": 0.9994476835978792
+  },
+  "rf_baseline_metrics": {
+    "mae": 1.112567882773317,
+    "rmse": 1.5362304314966722,
+    "mape_pct": 1.4566167353663604,
+    "r2": 0.9659924586890304
   }
 }
